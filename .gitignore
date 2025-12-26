@@ -1,8 +1,5 @@
+# Dependencies
 **/node_modules
-.next
-.cache
-.build
-*.nfs*
 **/.yarn/
 !**/.yarn/patches
 !**/.yarn/plugins
@@ -12,9 +9,53 @@
 !**/.yarn/cache
 **/.yarn/build-state.yml
 **/.yarn/install-state.gz
+
+# Next.js
+.next
+.cache
+.build
+out
 dist
 target
-out
+
+# Environment Variables - CRITICAL: Never commit these!
+.env
+.env.local
+.env*.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Deployment
 .deploy
+.vercel
+
+# Logs
 .logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Build files
 *.tsbuildinfo
+
+# OS
+.DS_Store
+*.nfs*
+Thumbs.db
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# Testing
+coverage
+.nyc_output
+
+# Misc
+.cache
+.temp
