@@ -3,7 +3,7 @@
  * Server-side helpers for authentication and authorization
  */
 
-import { auth } from '@clerk/nextjs';
+import { auth } from '@clerk/nextjs/server';
 import { redirect } from 'next/navigation';
 import { getCurrentUser, getCurrentUserRole } from './clerk-server';
 import { getUserByClerkId } from '../db/helpers';
@@ -13,7 +13,8 @@ import { getUserByClerkId } from '../db/helpers';
  * Redirects to /login if not authenticated
  */
 export async function requireAuth() {
-  const { userId } = auth();
+  const authResult = await auth();
+  const { userId } = authResult;
   
   if (!userId) {
     redirect('/login');
@@ -45,7 +46,8 @@ export async function requireAdmin() {
  * Check if user is authenticated (returns boolean)
  */
 export async function isAuthenticated(): Promise<boolean> {
-  const { userId } = auth();
+  const authResult = await auth();
+  const { userId } = authResult;
   return !!userId;
 }
 
@@ -53,7 +55,8 @@ export async function isAuthenticated(): Promise<boolean> {
  * Get current user or null (no redirect)
  */
 export async function getAuthUser() {
-  const { userId } = auth();
+  const authResult = await auth();
+  const { userId } = authResult;
   
   if (!userId) {
     return null;

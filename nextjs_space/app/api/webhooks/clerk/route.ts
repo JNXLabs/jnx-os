@@ -186,6 +186,11 @@ async function handleUserDeleted(evt: WebhookEvent) {
 
   const { id } = evt.data;
 
+  if (!id) {
+    console.error('No user ID in user.deleted event');
+    return;
+  }
+
   const user = await getUserByClerkId(id);
   if (!user) {
     console.log('User not found in database');
@@ -248,8 +253,13 @@ async function handleOrganizationMembershipCreated(evt: WebhookEvent) {
   if (evt.type !== 'organizationMembership.created') return;
 
   const { organization, public_user_data } = evt.data;
-  const clerkUserId = public_user_data.user_id;
+  const clerkUserId = public_user_data?.user_id;
   const clerkOrgId = organization.id;
+
+  if (!clerkUserId) {
+    console.error('No user ID in organization membership event');
+    return;
+  }
 
   const user = await getUserByClerkId(clerkUserId);
   const org = await getOrgByClerkId(clerkOrgId);
@@ -269,8 +279,13 @@ async function handleOrganizationMembershipUpdated(evt: WebhookEvent) {
   if (evt.type !== 'organizationMembership.updated') return;
 
   const { organization, public_user_data, role } = evt.data;
-  const clerkUserId = public_user_data.user_id;
+  const clerkUserId = public_user_data?.user_id;
   const clerkOrgId = organization.id;
+
+  if (!clerkUserId) {
+    console.error('No user ID in organization membership event');
+    return;
+  }
 
   const user = await getUserByClerkId(clerkUserId);
   const org = await getOrgByClerkId(clerkOrgId);
