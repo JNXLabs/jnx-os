@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import './globals.css';
-import { AuthProvider } from '@/lib/auth/context';
+import { ClerkProvider } from '@clerk/nextjs';
+import { dark } from '@clerk/themes';
 
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'),
@@ -26,13 +27,23 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning>
-      <head>
-        <script src="https://apps.abacus.ai/chatllm/appllm-lib.js"></script>
-      </head>
-      <body className="antialiased">
-        <AuthProvider>{children}</AuthProvider>
-      </body>
-    </html>
+    <ClerkProvider
+      appearance={{
+        baseTheme: dark,
+        variables: {
+          colorPrimary: '#06b6d4',
+          colorBackground: '#030712',
+          colorInputBackground: '#0b1221',
+          colorInputText: '#ffffff',
+        },
+      }}
+    >
+      <html lang="en" suppressHydrationWarning>
+        <head>
+          <script src="https://apps.abacus.ai/chatllm/appllm-lib.js"></script>
+        </head>
+        <body className="antialiased">{children}</body>
+      </html>
+    </ClerkProvider>
   );
 }
