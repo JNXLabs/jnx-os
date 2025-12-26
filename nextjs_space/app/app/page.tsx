@@ -1,23 +1,27 @@
 import { redirect } from 'next/navigation';
-import { getCurrentUser } from '@/lib/auth/helpers';
-import { getUserBySupabaseId, getOrg } from '@/lib/db/helpers';
-import { DashboardClient } from './dashboard-client';
+import { requireAuth } from '@/lib/auth/helpers';
+import DashboardClient from './dashboard-client';
 
-export default async function AppDashboard() {
-  const user = await getCurrentUser();
+// Force dynamic rendering (don't prerender at build time)
+export const dynamic = 'force-dynamic';
 
-  if (!user) {
-    redirect('/login');
+export default async function UserDashboardPage() {
+  // Require authentication (redirects to /login if not authenticated)
+  const { user, jnxUser } = await requireAuth();
+
+  if (!user || !jnxUser) {
+    // If JNX user doesn't exist yet (webhook hasn't processed), show a message
+    return (
+      <div className="min-h-screen bg-jnx-dark flex items-center justify-center p-4">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold text-white mb-4">Setting up your account...</h1>
+          <p className="text-slate-400">Please wait while we prepare your dashboard.</p>
+          <p className="text-sm text-slate-500 mt-2">This usually takes just a few seconds.</p>
+        </div>
+      </div>
+    );
   }
 
-  const jnxUser = await getUserBySupabaseId(user.id);
-  const org = jnxUser?.org_id ? await getOrg(jnxUser.org_id) : null;
-
-  return (
-    <DashboardClient
-      user={user}
-      jnxUser={jnxUser}
-      org={org}
-    />
-  );
+  // Pass user data to client component
+  return <DashboardClient user={user} jnxUser={jnxUser} />;
 }

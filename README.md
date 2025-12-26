@@ -1,243 +1,369 @@
-# JNX-OS v1 Phase 1 - Foundation MVP
+# JNX-OS v2 - The Neural Engine For SaaS Logic
 
-**The Neural Engine For SaaS Logic**
+**A production-ready, GDPR-compliant SaaS foundation with Clerk authentication, multi-tenant architecture, and comprehensive security features.**
 
-JNX-OS is a self-healing, predictive computational core designed to scale modern digital infrastructure autonomously. This is Phase 1 of the complete JNX ecosystem.
+---
 
-## 🎯 Project Overview
+## 🎯 What is JNX-OS?
 
-JNX-OS v1 Phase 1 delivers:
-- ✅ Complete authentication system (Email/Password + Google SSO)
-- ✅ Role-based access control (RBAC) with admin and member roles
-- ✅ User and admin dashboards
-- ✅ System health monitoring
-- ✅ Audit logging for all critical actions
-- ✅ GDPR-compliant privacy-first architecture
-- ✅ JNX Dark Design System
-- ✅ Supabase integration (Auth + Database)
+JNX-OS is a **scalable, secure, and compliant** foundation for building modern SaaS products. It provides:
 
-## 📦 Tech Stack
+- ✅ **Enterprise Authentication** - Clerk with Organizations + RBAC
+- ✅ **Multi-Tenant Architecture** - Isolated data per organization
+- ✅ **GDPR Compliance** - Data export, deletion, audit trails
+- ✅ **Security by Default** - Rate limiting, security headers, PII redaction
+- ✅ **Production Ready** - TypeScript strict mode, error handling, logging
 
-- **Framework:** Next.js 14 (App Router) + TypeScript (strict mode)
-- **Styling:** TailwindCSS with custom JNX Dark design system
-- **Database:** PostgreSQL via Supabase
-- **Authentication:** Supabase Auth (Email/Password + Google OAuth)
-- **Validation:** Zod
-- **Deployment:** Vercel-ready
+---
 
 ## 🚀 Quick Start
 
 ### Prerequisites
 
-- Node.js 18+ and Yarn
+- Node.js 18+
+- Yarn 4+
+- Clerk account ([clerk.com](https://clerk.com))
 - Supabase account ([supabase.com](https://supabase.com))
-- (Optional) Google OAuth credentials for Google Sign-In
 
-### 1. Clone and Install
+### 1. Install Dependencies
 
 ```bash
 cd /home/ubuntu/jnx-os/nextjs_space
 yarn install
 ```
 
-### 2. Configure Supabase
+### 2. Configure Clerk
 
-Follow the detailed setup guide in [SETUP.md](./SETUP.md) to:
-1. Create a Supabase project
-2. Run the database schema
-3. Configure environment variables
-4. (Optional) Set up Google OAuth
+See [docs/CLERK_SETUP.md](docs/CLERK_SETUP.md) for detailed instructions.
 
-### 3. Environment Variables
-
-Copy `.env.local.example` to `.env.local` and fill in your Supabase credentials:
+**Quick setup:**
+1. Create Clerk application
+2. Copy API keys to `.env`:
 
 ```bash
-cp .env.local.example .env.local
+NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_...
+CLERK_SECRET_KEY=sk_test_...
+CLERK_WEBHOOK_SECRET=whsec_...
 ```
 
-Required variables:
-```env
+### 3. Configure Supabase
+
+1. Create Supabase project
+2. Run database schema:
+
+```bash
+# Copy the SQL from lib/db/schema-v2.sql
+# Paste into Supabase SQL Editor
+# Execute
+```
+
+3. Add credentials to `.env`:
+
+```bash
 NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
 SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
-NEXT_PUBLIC_APP_URL=http://localhost:3000
 ```
 
-### 4. Run Development Server
+### 4. Start Development Server
 
 ```bash
 yarn dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) to see your application.
-
-## 📋 Database Schema
-
-The database includes:
-- `orgs` - Organization management
-- `users` - User accounts with role-based access
-- `audit_logs` - Activity tracking
-- `system_events` - System-wide events
-
-See `lib/db/schema.sql` for the complete schema.
-
-## 🎉 Features
-
-### Pages
-
-- **Landing Page** (`/`) - Hero section, features grid, products showcase
-- **Login** (`/login`) - Email/Password + Google OAuth sign-in
-- **Signup** (`/signup`) - User registration with auto org creation
-- **User Dashboard** (`/app`) - Protected user interface
-- **Admin Dashboard** (`/admin`) - System health monitoring, audit logs
-- **Privacy Policy** (`/privacy`) - GDPR-compliant privacy information
-- **Terms of Service** (`/terms`) - Legal terms and conditions
-- **Products** (`/products`) - Product showcase (QRYX coming soon)
-
-### Authentication
-
-- ✅ Email/Password authentication
-- ✅ Google OAuth Sign-In
-- ✅ Session management with Supabase
-- ✅ Automatic user and organization creation on signup
-- ✅ Audit logging for all auth events
-
-### Authorization
-
-- ✅ Route protection via middleware
-- ✅ Role-based access control (admin, member)
-- ✅ Admin-only routes and features
-- ✅ Automatic redirects based on auth state
-
-### System Health
-
-- ✅ Real-time Supabase connection status
-- ✅ Active user count
-- ✅ Current user and organization info
-- ✅ Recent audit logs viewer
-
-## 🎨 JNX Dark Design System
-
-The application implements a custom design system with:
-
-- **Colors:** Dark slate background (#030712) with cyan accents (#06b6d4)
-- **Typography:** Inter for body text, JetBrains Mono for code
-- **Components:** Custom buttons, inputs, cards with consistent styling
-- **Animations:** Smooth transitions and hover effects
-- **Custom scrollbar:** Styled to match the dark theme
-
-## 🔒 Security
-
-- HTTPS-only in production
-- Secure cookie handling
-- Role-based access control
-- Audit logging for sensitive actions
-- Data minimization principles
-- GDPR compliance
-
-## 📝 Testing Authentication
-
-1. **Create an account:**
-   - Go to `/signup`
-   - Enter your email and password
-   - An organization is automatically created
-   - Default role: `member`
-
-2. **Test Google OAuth:**
-   - Click "Sign in with Google"
-   - Complete OAuth flow
-   - User and org are created automatically
-
-3. **Access admin features:**
-   - To test admin features, manually update a user's role in Supabase:
-   ```sql
-   UPDATE users SET role = 'admin' WHERE email = 'your-email@example.com';
-   ```
-   - Then navigate to `/admin`
-
-## 🛠️ Development
-
-### Project Structure
-
-```
-nextjs_space/
-├── app/                    # Next.js App Router pages
-│   ├── page.tsx            # Landing page
-│   ├── login/             # Login page
-│   ├── signup/            # Signup page
-│   ├── app/               # User dashboard (protected)
-│   ├── admin/             # Admin dashboard (admin only)
-│   ├── privacy/           # Privacy policy
-│   ├── terms/             # Terms of service
-│   ├── products/          # Products showcase
-│   └── api/               # API routes
-├── components/            # React components
-│   └── ui/                # UI components
-├── lib/                   # Utilities and helpers
-│   ├── auth/              # Auth helpers
-│   ├── db/                # Database helpers
-│   └── supabase/          # Supabase clients
-├── middleware.ts          # Route protection
-└── tailwind.config.ts     # JNX Dark design tokens
-```
-
-### Key Files
-
-- `middleware.ts` - Route protection and auth checks
-- `lib/supabase/client.ts` - Supabase browser client
-- `lib/supabase/server.ts` - Supabase server client
-- `lib/db/helpers.ts` - Database operations
-- `lib/auth/helpers.ts` - Authentication utilities
-
-## 🚀 Deployment
-
-### Vercel Deployment
-
-1. Push your code to GitHub
-2. Import project in Vercel
-3. Add environment variables in Vercel dashboard
-4. Deploy!
-
-**Important:** Update `NEXT_PUBLIC_APP_URL` to your production domain.
-
-### Environment Variables for Production
-
-Make sure to set these in your Vercel project settings:
-- `NEXT_PUBLIC_SUPABASE_URL`
-- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-- `SUPABASE_SERVICE_ROLE_KEY`
-- `NEXT_PUBLIC_APP_URL` (your production domain)
-- `NEXT_PUBLIC_GOOGLE_CLIENT_ID` (optional)
-- `NEXT_PUBLIC_GOOGLE_CLIENT_SECRET` (optional)
-
-## 🔎 What's Next? (Phase 2+)
-
-Phase 1 provides the foundation. Future phases will add:
-
-- **Phase 2:**
-  - Stripe billing integration
-  - Subscription management
-  - Usage tracking and limits
-  - Team management features
-
-- **Phase 3:**
-  - QRYX product launch (AI Sales Assistant)
-  - Multi-product subdomain architecture
-  - Advanced analytics and reporting
-  - Product-specific entitlements
-
-## 👥 Support
-
-For questions or issues:
-- Check [SETUP.md](./SETUP.md) for detailed configuration guide
-- Review the code comments for implementation details
-- Contact: support@jnxlabs.ai
-
-## 📜 License
-
-Copyright © 2025 JNX Labs. All rights reserved.
+Visit: http://localhost:3000
 
 ---
 
-**Built with ⚡ by the JNX Labs team**
+## 📦 What's Included
+
+### Authentication & Authorization
+- **Clerk Integration** - Email/Password + Google OAuth
+- **Organizations** - Multi-tenant support
+- **RBAC** - Admin and Member roles
+- **Webhooks** - Clerk → Supabase sync
+
+### Database & Data Management
+- **Supabase PostgreSQL** - Scalable database
+- **Type-Safe Queries** - TypeScript interfaces
+- **Audit Logging** - Track all actions
+- **Migrations** - Version-controlled schema
+
+### Security Features
+- **Rate Limiting** - Prevent abuse
+- **Security Headers** - CSP, HSTS, XSS protection
+- **PII Redaction** - Safe logging
+- **Input Validation** - Zod schemas
+
+### GDPR Compliance
+- **Data Export** - User data portability
+- **Data Deletion** - Soft/hard delete
+- **Privacy Policy** - Template included
+- **Audit Trail** - Compliance logging
+
+### UI/UX
+- **JNX Dark Design** - Custom design system
+- **Responsive** - Mobile-friendly
+- **Landing Page** - Marketing site
+- **Dashboards** - User + Admin interfaces
+
+---
+
+## 🏗️ Architecture
+
+```
+User → Middleware (Auth) → API Routes → Services → Database
+                ↓
+        Clerk (Auth) + Supabase (Data)
+```
+
+See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for details.
+
+---
+
+## 📂 Project Structure
+
+```
+/home/ubuntu/jnx-os/
+├── nextjs_space/              # Next.js application
+│   ├── app/                   # Pages & API routes
+│   │   ├── (public)/          # Landing, products, etc.
+│   │   ├── login/             # Clerk SignIn
+│   │   ├── signup/            # Clerk SignUp
+│   │   ├── app/               # User Dashboard
+│   │   ├── admin/             # Admin Dashboard
+│   │   └── api/               # API endpoints
+│   ├── components/            # React components
+│   ├── lib/                   # Core libraries
+│   │   ├── auth/              # Clerk utilities
+│   │   ├── db/                # Database helpers
+│   │   ├── privacy/           # GDPR features
+│   │   ├── security/          # Security middleware
+│   │   └── observability/     # Logging
+│   └── middleware.ts          # Auth middleware
+└── docs/                      # Documentation
+    ├── ARCHITECTURE.md        # System design
+    ├── BACKEND_CONTRACT.md    # Development rules
+    ├── CLERK_SETUP.md         # Auth setup
+    └── GDPR_COMPLIANCE.md     # Privacy features
+```
+
+---
+
+## 🔐 Security Features
+
+### Implemented
+
+- ✅ Clerk authentication (OAuth2)
+- ✅ HTTPS only (enforced)
+- ✅ Rate limiting (in-memory)
+- ✅ Security headers (CSP, HSTS, etc.)
+- ✅ PII redaction in logs
+- ✅ RBAC (admin/member)
+- ✅ Audit logging
+- ✅ Input validation (Zod)
+
+### Best Practices
+
+- Secret keys in environment variables
+- No PII in logs
+- TypeScript strict mode
+- Error boundaries
+- Graceful degradation
+
+---
+
+## 📊 Database Schema
+
+### Core Tables
+
+- `orgs` - Organizations (tenants)
+- `users` - User accounts
+- `audit_logs` - Action tracking
+- `system_events` - System logs
+
+### GDPR Tables
+
+- `data_export_requests` - Export tracking
+- `billing_customers` - Payment data
+- `entitlements` - Feature access
+- `feature_flags` - Toggles
+
+See [lib/db/schema-v2.sql](nextjs_space/lib/db/schema-v2.sql) for full schema.
+
+---
+
+## 🧪 Testing
+
+### Run Type Checks
+
+```bash
+yarn tsc --noEmit
+```
+
+### Build for Production
+
+```bash
+yarn build
+```
+
+### Test Auth Flows
+
+1. ✅ Sign up with email
+2. ✅ Sign in with email
+3. ✅ Sign in with Google
+4. ✅ Access `/app` (user dashboard)
+5. ✅ Access `/admin` (admin dashboard)
+6. ✅ Logout
+
+---
+
+## 📖 Documentation
+
+| Document | Description |
+|----------|-------------|
+| [ARCHITECTURE.md](docs/ARCHITECTURE.md) | System architecture and data flow |
+| [BACKEND_CONTRACT.md](docs/BACKEND_CONTRACT.md) | Development rules (READ FIRST!) |
+| [CLERK_SETUP.md](docs/CLERK_SETUP.md) | Clerk authentication setup |
+| [GDPR_COMPLIANCE.md](docs/GDPR_COMPLIANCE.md) | Privacy features and compliance |
+
+---
+
+## 🚢 Deployment
+
+### Vercel (Recommended)
+
+1. Push to GitHub
+2. Connect to Vercel
+3. Add environment variables
+4. Deploy!
+
+### Environment Variables for Production
+
+```bash
+# Clerk
+NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_live_...
+CLERK_SECRET_KEY=sk_live_...
+CLERK_WEBHOOK_SECRET=whsec_...
+
+# Supabase
+NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+
+# App
+NEXT_PUBLIC_APP_URL=https://your-domain.com
+NODE_ENV=production
+```
+
+---
+
+## 🛠️ Tech Stack
+
+| Layer | Technology |
+|-------|-----------|
+| **Frontend** | Next.js 14, React 18, TypeScript |
+| **Styling** | TailwindCSS, JNX Dark Design |
+| **Auth** | Clerk (OAuth2, Organizations) |
+| **Database** | Supabase (PostgreSQL) |
+| **Validation** | Zod |
+| **Logging** | Custom structured logger |
+| **Deployment** | Vercel |
+
+---
+
+## 🎨 Design System
+
+**JNX Dark** - A custom dark-themed design system with:
+
+- **Colors**: Slate + Cyan primary
+- **Typography**: Inter (sans), JetBrains Mono (mono)
+- **Components**: Buttons, Cards, Inputs, Status Badges
+- **Animations**: Subtle hover effects, gradients
+
+See [app/globals.css](nextjs_space/app/globals.css) and [tailwind.config.ts](nextjs_space/tailwind.config.ts).
+
+---
+
+## 🤝 Contributing
+
+### Before Making Changes
+
+1. Read [BACKEND_CONTRACT.md](docs/BACKEND_CONTRACT.md)
+2. Check if you're modifying protected files
+3. Create new modules instead of modifying existing ones
+4. Test thoroughly before committing
+
+### Development Workflow
+
+1. Create feature branch
+2. Make changes (follow contract rules)
+3. Test locally
+4. Create pull request
+5. Review and merge
+
+---
+
+## 📝 Roadmap
+
+### Phase 3 (Future)
+
+- [ ] Stripe billing integration
+- [ ] Advanced analytics
+- [ ] Multi-product support (QRYX subdomain)
+- [ ] Feature flags UI
+- [ ] User management UI
+- [ ] Email notifications
+- [ ] Webhook retry logic
+- [ ] Redis rate limiting
+- [ ] Sentry error tracking
+
+---
+
+## ⚠️ Important Notes
+
+### For Developers
+
+- **Never modify protected files** (see BACKEND_CONTRACT.md)
+- **Always use migrations** for database changes
+- **Never log PII** (emails, passwords, etc.)
+- **Require auth** on all protected routes
+- **Rate limit** sensitive endpoints
+
+### For Administrators
+
+- Set admin role via Clerk public metadata
+- Monitor audit logs regularly
+- Review system health in admin dashboard
+- Respond to data requests within 30 days (GDPR)
+
+---
+
+## 📞 Support
+
+- **Documentation**: See [docs/](docs/)
+- **Issues**: GitHub Issues
+- **Email**: support@yourcompany.com (update this!)
+
+---
+
+## 📄 License
+
+[Your License Here]
+
+---
+
+## 🎉 What's Next?
+
+1. ✅ Complete Clerk setup → [CLERK_SETUP.md](docs/CLERK_SETUP.md)
+2. ✅ Run database migrations
+3. ✅ Create your first admin user
+4. ✅ Test all auth flows
+5. ✅ Customize Privacy Policy
+6. ✅ Deploy to production
+
+**Your SaaS foundation is ready!** 🚀
+
+---
+
+**Built with ❤️ using Next.js, Clerk, and Supabase**

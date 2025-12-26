@@ -3,8 +3,7 @@
  * For use in Server Components and API routes
  */
 
-import { auth, currentUser } from '@clerk/nextjs';
-import { clerkClient } from '@clerk/nextjs';
+import { auth, currentUser, clerkClient } from '@clerk/nextjs/server';
 import type { User } from '@clerk/nextjs/server';
 
 /**
@@ -41,8 +40,9 @@ export async function isAdmin(): Promise<boolean> {
  * Get user's organization ID
  */
 export async function getCurrentUserOrgId(): Promise<string | null> {
-  const { orgId } = auth();
-  return orgId;
+  const authResult = await auth();
+  const { orgId } = authResult;
+  return orgId || null;
 }
 
 /**
@@ -50,7 +50,8 @@ export async function getCurrentUserOrgId(): Promise<string | null> {
  */
 export async function getOrganization(orgId: string) {
   try {
-    const organization = await clerkClient.organizations.getOrganization({ orgId });
+    const client = await clerkClient();
+    const organization = await client.organizations.getOrganization({ organizationId: orgId });
     return organization;
   } catch (error) {
     console.error('Error fetching organization:', error);
@@ -66,7 +67,8 @@ export async function updateUserMetadata(
   metadata: { role?: string; [key: string]: any }
 ) {
   try {
-    await clerkClient.users.updateUser(userId, {
+    const client = await clerkClient();
+    await client.users.updateUser(userId, {
       publicMetadata: metadata,
     });
     return true;
@@ -81,7 +83,8 @@ export async function updateUserMetadata(
  */
 export async function getOrganizationUsers(orgId: string) {
   try {
-    const { data } = await clerkClient.organizations.getOrganizationMembershipList({
+    const client = await clerkClient();
+    const { data } = await client.organizations.getOrganizationMembershipList({
       organizationId: orgId,
     });
     return data;

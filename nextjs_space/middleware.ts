@@ -1,49 +1,74 @@
-import { authMiddleware } from '@clerk/nextjs';
+import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
 
-export default authMiddleware({
-  // Public routes that don't require authentication
-  publicRoutes: ['/', '/login', '/signup', '/privacy', '/terms', '/products'],
-  
-  // Routes that are ignored by the middleware
-  ignoredRoutes: ['/api/webhooks/clerk'],
+// Check if Clerk is configured
+const isClerkConfigured = () => {
+  return !!(
+    process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY &&
+    process.env.CLERK_SECRET_KEY
+  );
+};
 
-  // After authentication, check for admin role on admin routes
-  afterAuth(auth, req) {
-    // If accessing admin routes
-    if (req.nextUrl.pathname.startsWith('/admin')) {
-      // Must be signed in
-      if (!auth.userId) {
-        const loginUrl = new URL('/login', req.url);
-        return NextResponse.redirect(loginUrl);
-      }
+const isPublicRoute = createRouteMatcher([
+  '/',
+  '/login(.*)',
+  '/signup(.*)',
+  '/privacy',
+  '/terms',
+  '/products',
+]);
 
-      // Check for admin role in public metadata
-      const role = auth.sessionClaims?.metadata?.role as string | undefined;
-      
-      // If not admin, redirect to /app
-      if (role !== 'admin') {
-        const appUrl = new URL('/app', req.url);
-        return NextResponse.redirect(appUrl);
-      }
+const isAdminRoute = createRouteMatcher(['/admin(.*)']);
+const isAppRoute = createRouteMatcher(['/app(.*)']);
+
+export default clerkMiddleware(async (auth, req) => {
+  // If Clerk is not configured, allow all public routes and block protected routes
+  if (!isClerkConfigured()) {
+    if (isAppRoute(req) || isAdminRoute(req)) {
+      const loginUrl = new URL('/login', req.url);
+      return NextResponse.redirect(loginUrl);
+    }
+    return NextResponse.next();
+  }
+
+  // Allow public routes
+  if (isPublicRoute(req)) {
+    return NextResponse.next();
+  }
+
+  // Get user session
+  const authResult = await auth();
+  const { userId, sessionClaims } = authResult;
+
+  // Protect app routes
+  if (isAppRoute(req) && !userId) {
+    const loginUrl = new URL('/login', req.url);
+    return NextResponse.redirect(loginUrl);
+  }
+
+  // Protect admin routes
+  if (isAdminRoute(req)) {
+    if (!userId) {
+      const loginUrl = new URL('/login', req.url);
+      return NextResponse.redirect(loginUrl);
     }
 
-    // If accessing /app routes, must be signed in
-    if (req.nextUrl.pathname.startsWith('/app')) {
-      if (!auth.userId) {
-        const loginUrl = new URL('/login', req.url);
-        return NextResponse.redirect(loginUrl);
-      }
-    }
-
-    // If signed in and accessing login/signup, redirect to /app
-    if (auth.userId && (req.nextUrl.pathname === '/login' || req.nextUrl.pathname === '/signup')) {
+    // Check for admin role
+    const metadata = sessionClaims?.metadata as { role?: string } | undefined;
+    const role = metadata?.role;
+    if (role !== 'admin') {
       const appUrl = new URL('/app', req.url);
       return NextResponse.redirect(appUrl);
     }
+  }
 
-    return NextResponse.next();
-  },
+  // Redirect authenticated users away from login/signup
+  if (userId && (req.nextUrl.pathname === '/login' || req.nextUrl.pathname === '/signup')) {
+    const appUrl = new URL('/app', req.url);
+    return NextResponse.redirect(appUrl);
+  }
+
+  return NextResponse.next();
 });
 
 export const config = {

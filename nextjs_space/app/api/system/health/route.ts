@@ -1,29 +1,35 @@
 import { NextResponse } from 'next/server';
+import { currentUser } from '@clerk/nextjs/server';
 import {
   checkSupabaseConnection,
   countActiveSessions,
   getRecentAuditLogs,
-  getUserBySupabaseId,
-  getOrg,
+  getUserByClerkId,
 } from '@/lib/db/helpers';
-import { getCurrentUser } from '@/lib/auth/helpers';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
   try {
     // Check Supabase connection
-    const connectionStatus = await checkSupabaseConnection();
+    const supabaseStatus = await checkSupabaseConnection();
 
-    // Get current user info
-    const currentUser = await getCurrentUser();
-    let jnxUser = null;
-    let org = null;
+    // Check Clerk connection (if user is authenticated, Clerk is working)
+    const clerkUser = await currentUser();
+    const clerkStatus = clerkUser
+      ? { status: 'connected', message: 'Clerk authentication operational' }
+      : { status: 'disconnected', message: 'No authenticated user' };
 
-    if (currentUser) {
-      jnxUser = await getUserBySupabaseId(currentUser.id);
-      if (jnxUser?.org_id) {
-        org = await getOrg(jnxUser.org_id);
+    // Get current user details
+    let currentUserInfo = null;
+    if (clerkUser) {
+      const jnxUser = await getUserByClerkId(clerkUser.id);
+      if (jnxUser) {
+        currentUserInfo = {
+          email: jnxUser.email,
+          role: jnxUser.role,
+          org_id: jnxUser.org_id,
+        };
       }
     }
 
@@ -31,38 +37,22 @@ export async function GET() {
     const activeSessions = await countActiveSessions();
 
     // Get recent audit logs
-    const recentLogs = await getRecentAuditLogs(10);
+    const recentAuditLogs = await getRecentAuditLogs(10);
 
-    return NextResponse.json(
-      {
-        connection: connectionStatus,
-        currentUser: jnxUser
-          ? {
-              email: jnxUser.email,
-              role: jnxUser.role,
-              user_id: jnxUser.user_id,
-            }
-          : null,
-        currentOrg: org
-          ? {
-              org_id: org.org_id,
-              name: org.name,
-            }
-          : null,
-        activeSessions,
-        recentAuditLogs: recentLogs,
-      },
-      { status: 200 }
-    );
+    return NextResponse.json({
+      supabase: supabaseStatus,
+      clerk: clerkStatus,
+      currentUser: currentUserInfo,
+      activeSessions,
+      recentAuditLogs,
+      timestamp: new Date().toISOString(),
+    });
   } catch (error) {
-    console.error('Health check error:', error);
+    console.error('Error fetching system health:', error);
     return NextResponse.json(
       {
-        connection: { status: 'disconnected', message: 'Health check failed' },
-        currentUser: null,
-        currentOrg: null,
-        activeSessions: 0,
-        recentAuditLogs: [],
+        error: 'Failed to fetch system health',
+        timestamp: new Date().toISOString(),
       },
       { status: 500 }
     );
