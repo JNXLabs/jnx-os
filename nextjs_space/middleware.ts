@@ -1,116 +1,51 @@
-import { createServerClient, type CookieOptions } from '@supabase/ssr';
-import { NextResponse, type NextRequest } from 'next/server';
+import { authMiddleware } from '@clerk/nextjs';
+import { NextResponse } from 'next/server';
 
-export async function middleware(request: NextRequest) {
-  let response = NextResponse.next({
-    request: {
-      headers: request.headers,
-    },
-  });
+export default authMiddleware({
+  // Public routes that don't require authentication
+  publicRoutes: ['/', '/login', '/signup', '/privacy', '/terms', '/products'],
+  
+  // Routes that are ignored by the middleware
+  ignoredRoutes: ['/api/webhooks/clerk'],
 
-  // Check if Supabase is configured
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  // After authentication, check for admin role on admin routes
+  afterAuth(auth, req) {
+    // If accessing admin routes
+    if (req.nextUrl.pathname.startsWith('/admin')) {
+      // Must be signed in
+      if (!auth.userId) {
+        const loginUrl = new URL('/login', req.url);
+        return NextResponse.redirect(loginUrl);
+      }
 
-  if (!supabaseUrl || !supabaseAnonKey) {
-    // If Supabase is not configured, allow access to all routes except protected ones
-    if (
-      request.nextUrl.pathname.startsWith('/app') ||
-      request.nextUrl.pathname.startsWith('/admin')
-    ) {
-      return NextResponse.redirect(new URL('/login', request.url));
-    }
-    return response;
-  }
-
-  const supabase = createServerClient(
-    supabaseUrl,
-    supabaseAnonKey,
-    {
-      cookies: {
-        get(name: string) {
-          return request.cookies.get(name)?.value;
-        },
-        set(name: string, value: string, options: CookieOptions) {
-          request.cookies.set({
-            name,
-            value,
-            ...options,
-          });
-          response = NextResponse.next({
-            request: {
-              headers: request.headers,
-            },
-          });
-          response.cookies.set({
-            name,
-            value,
-            ...options,
-          });
-        },
-        remove(name: string, options: CookieOptions) {
-          request.cookies.set({
-            name,
-            value: '',
-            ...options,
-          });
-          response = NextResponse.next({
-            request: {
-              headers: request.headers,
-            },
-          });
-          response.cookies.set({
-            name,
-            value: '',
-            ...options,
-          });
-        },
-      },
-    }
-  );
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  // Protected routes - require authentication
-  if (
-    request.nextUrl.pathname.startsWith('/app') ||
-    request.nextUrl.pathname.startsWith('/admin')
-  ) {
-    if (!user) {
-      return NextResponse.redirect(new URL('/login', request.url));
-    }
-
-    // Admin routes - require admin role
-    if (request.nextUrl.pathname.startsWith('/admin')) {
-      // Fetch user role from database
-      try {
-        const { data: jnxUser } = await supabase
-          .from('users')
-          .select('role')
-          .eq('supabase_user_id', user.id)
-          .single();
-
-        if (!jnxUser || jnxUser.role !== 'admin') {
-          return NextResponse.redirect(new URL('/app', request.url));
-        }
-      } catch (error) {
-        return NextResponse.redirect(new URL('/app', request.url));
+      // Check for admin role in public metadata
+      const role = auth.sessionClaims?.metadata?.role as string | undefined;
+      
+      // If not admin, redirect to /app
+      if (role !== 'admin') {
+        const appUrl = new URL('/app', req.url);
+        return NextResponse.redirect(appUrl);
       }
     }
-  }
 
-  // If user is logged in and tries to access login/signup, redirect to /app
-  if (user && (request.nextUrl.pathname === '/login' || request.nextUrl.pathname === '/signup')) {
-    return NextResponse.redirect(new URL('/app', request.url));
-  }
+    // If accessing /app routes, must be signed in
+    if (req.nextUrl.pathname.startsWith('/app')) {
+      if (!auth.userId) {
+        const loginUrl = new URL('/login', req.url);
+        return NextResponse.redirect(loginUrl);
+      }
+    }
 
-  return response;
-}
+    // If signed in and accessing login/signup, redirect to /app
+    if (auth.userId && (req.nextUrl.pathname === '/login' || req.nextUrl.pathname === '/signup')) {
+      const appUrl = new URL('/app', req.url);
+      return NextResponse.redirect(appUrl);
+    }
+
+    return NextResponse.next();
+  },
+});
 
 export const config = {
-  matcher: [
-    '/((?!_next/static|_next/image|favicon.svg|og-image.png|robots.txt|api).*)',
-  ],
+  matcher: ['/((?!.+\\.[\\w]+$|_next).*)', '/', '/(api|trpc)(.*)'],
 };

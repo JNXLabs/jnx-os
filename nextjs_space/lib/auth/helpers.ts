@@ -1,37 +1,66 @@
-import { createSupabaseServerClient } from '../supabase/server';
+/**
+ * Auth Helper Functions
+ * Server-side helpers for authentication and authorization
+ */
+
+import { auth } from '@clerk/nextjs';
 import { redirect } from 'next/navigation';
-import { getUserBySupabaseId } from '../db/helpers';
+import { getCurrentUser, getCurrentUserRole } from './clerk-server';
+import { getUserByClerkId } from '../db/helpers';
 
-export async function getCurrentUser() {
-  const supabase = await createSupabaseServerClient();
-  if (!supabase) return null;
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  return user;
-}
-
+/**
+ * Require authentication
+ * Redirects to /login if not authenticated
+ */
 export async function requireAuth() {
-  const user = await getCurrentUser();
-  if (!user) {
+  const { userId } = auth();
+  
+  if (!userId) {
     redirect('/login');
   }
-  return user;
+
+  const user = await getCurrentUser();
+  const jnxUser = user ? await getUserByClerkId(user.id) : null;
+
+  return { user, jnxUser };
 }
 
+/**
+ * Require admin role
+ * Redirects to /app if not admin
+ */
 export async function requireAdmin() {
-  const user = await requireAuth();
-  const jnxUser = await getUserBySupabaseId(user.id);
-
-  if (!jnxUser || jnxUser.role !== 'admin') {
+  const { user, jnxUser } = await requireAuth();
+  
+  const role = await getCurrentUserRole();
+  
+  if (role !== 'admin' && jnxUser?.role !== 'admin') {
     redirect('/app');
   }
 
   return { user, jnxUser };
 }
 
-export async function getJnxUser(supabaseUserId: string) {
-  return await getUserBySupabaseId(supabaseUserId);
+/**
+ * Check if user is authenticated (returns boolean)
+ */
+export async function isAuthenticated(): Promise<boolean> {
+  const { userId } = auth();
+  return !!userId;
+}
+
+/**
+ * Get current user or null (no redirect)
+ */
+export async function getAuthUser() {
+  const { userId } = auth();
+  
+  if (!userId) {
+    return null;
+  }
+
+  const user = await getCurrentUser();
+  const jnxUser = user ? await getUserByClerkId(user.id) : null;
+
+  return { user, jnxUser };
 }
