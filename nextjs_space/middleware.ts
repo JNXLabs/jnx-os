@@ -53,13 +53,17 @@ export default clerkMiddleware(async (auth, req) => {
       return NextResponse.redirect(loginUrl);
     }
 
-    // Check for admin role
-    const metadata = sessionClaims?.metadata as { role?: string } | undefined;
-    const role = metadata?.role;
+    // FIXED: Check for admin role in publicMetadata (not metadata)
+    const publicMetadata = sessionClaims?.publicMetadata as { role?: string } | undefined;
+    const role = publicMetadata?.role;
+    
     if (role !== 'admin') {
+      console.log('[Middleware] Access denied to admin route - role:', role);
       const appUrl = new URL('/app', req.url);
       return NextResponse.redirect(appUrl);
     }
+    
+    console.log('[Middleware] Admin access granted');
   }
 
   // Redirect authenticated users away from login/signup
