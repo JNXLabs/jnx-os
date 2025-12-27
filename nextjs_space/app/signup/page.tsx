@@ -40,7 +40,8 @@ export default function SignupPage() {
             routing="path"
             path="/signup"
             signInUrl="/login"
-            afterSignUpUrl="/app"
+            fallbackRedirectUrl="/app"
+            forceRedirectUrl="/app"
           />
         </div>
 
