@@ -33,7 +33,15 @@ export default async function UserDashboardPage() {
       if (jnxUser) {
         console.log('[Dashboard] Server-side sync successful');
         // User created, render dashboard immediately
-        return <DashboardClient user={user} jnxUser={jnxUser} />;
+        // Convert Clerk user to plain object for client component
+        const plainUser = {
+          id: user.id,
+          email: user.emailAddresses[0]?.emailAddress || '',
+          firstName: user.firstName,
+          lastName: user.lastName,
+          imageUrl: user.imageUrl,
+        };
+        return <DashboardClient user={plainUser} jnxUser={jnxUser} />;
       } else {
         console.warn('[Dashboard] Server-side sync failed, showing setup screen');
       }
@@ -47,5 +55,13 @@ export default async function UserDashboardPage() {
   }
 
   // User exists, render dashboard
-  return <DashboardClient user={user} jnxUser={jnxUser} />;
+  // Convert Clerk user to plain object for client component
+  const plainUser = {
+    id: user.id,
+    email: user.emailAddresses[0]?.emailAddress || '',
+    firstName: user.firstName,
+    lastName: user.lastName,
+    imageUrl: user.imageUrl,
+  };
+  return <DashboardClient user={plainUser} jnxUser={jnxUser} />;
 }

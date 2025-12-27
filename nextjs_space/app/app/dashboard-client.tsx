@@ -4,7 +4,6 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useClerk } from '@clerk/nextjs';
-import type { User } from '@clerk/nextjs/server';
 import type { JNXUser } from '@/lib/db/helpers';
 import {
   LayoutDashboard,
@@ -17,8 +16,17 @@ import {
   ShieldCheck,
 } from 'lucide-react';
 
+// Plain user object type for client components
+interface PlainUser {
+  id: string;
+  email: string;
+  firstName: string | null;
+  lastName: string | null;
+  imageUrl: string;
+}
+
 interface DashboardClientProps {
-  user: User;
+  user: PlainUser;
   jnxUser: JNXUser;
 }
 
@@ -76,7 +84,7 @@ export default function DashboardClient({ user, jnxUser }: DashboardClientProps)
           <div className="flex items-center space-x-3 mb-3 px-2">
             <div className="w-10 h-10 rounded-full bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center">
               <span className="text-white font-semibold">
-                {user.firstName?.[0] || user.emailAddresses[0]?.emailAddress[0] || 'U'}
+                {user.firstName?.[0] || user.email[0] || 'U'}
               </span>
             </div>
             <div className="flex-1 min-w-0">
@@ -84,7 +92,7 @@ export default function DashboardClient({ user, jnxUser }: DashboardClientProps)
                 {user.firstName} {user.lastName}
               </p>
               <p className="text-xs text-slate-400 truncate">
-                {user.emailAddresses[0]?.emailAddress}
+                {user.email}
               </p>
             </div>
           </div>
@@ -172,7 +180,7 @@ export default function DashboardClient({ user, jnxUser }: DashboardClientProps)
             <div className="space-y-3">
               <div className="flex justify-between items-center py-2 border-b border-slate-800">
                 <span className="text-slate-400">Email</span>
-                <span className="text-white">{user.emailAddresses[0]?.emailAddress}</span>
+                <span className="text-white">{user.email}</span>
               </div>
               <div className="flex justify-between items-center py-2 border-b border-slate-800">
                 <span className="text-slate-400">Role</span>
