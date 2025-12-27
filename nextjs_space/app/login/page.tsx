@@ -88,7 +88,8 @@ export default function LoginPage() {
             routing="path"
             path="/login"
             signUpUrl="/signup"
-            afterSignInUrl="/app"
+            fallbackRedirectUrl="/app"
+            forceRedirectUrl="/app"
           />
         </div>
 
