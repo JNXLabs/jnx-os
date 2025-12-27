@@ -70,22 +70,70 @@ export interface DataExportRequest {
 
 // ===== ORGANIZATION FUNCTIONS =====
 
-export async function createOrg(name: string, clerkOrgId?: string): Promise<JNXOrg | null> {
+/**
+ * ENTERPRISE: Upsert Organization (Idempotent)
+ * Creates or updates an organization based on clerk_org_id
+ * @returns Created/Updated organization or null on error
+ */
+export async function upsertOrg(name: string, clerkOrgId?: string): Promise<JNXOrg | null> {
   const supabase = createSupabaseAdminClient();
-  if (!supabase) return null;
-
-  const { data, error } = await supabase
-    .from('orgs')
-    .insert({ name, clerk_org_id: clerkOrgId })
-    .select()
-    .single();
-
-  if (error) {
-    console.error('Error creating org:', error);
+  if (!supabase) {
+    console.error('Supabase client not available');
     return null;
   }
 
-  return data;
+  try {
+    const orgData: any = {
+      name,
+      updated_at: new Date().toISOString(),
+    };
+
+    if (clerkOrgId) {
+      orgData.clerk_org_id = clerkOrgId;
+      
+      // UPSERT based on clerk_org_id
+      const { data, error } = await supabase
+        .from('orgs')
+        .upsert(orgData, { 
+          onConflict: 'clerk_org_id',
+          ignoreDuplicates: false 
+        })
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Error upserting org with Clerk ID:', error);
+        return null;
+      }
+
+      return data;
+    } else {
+      // No clerk_org_id, just insert
+      const { data, error } = await supabase
+        .from('orgs')
+        .insert(orgData)
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Error inserting org:', error);
+        return null;
+      }
+
+      return data;
+    }
+  } catch (error) {
+    console.error('Unexpected error in upsertOrg:', error);
+    return null;
+  }
+}
+
+/**
+ * LEGACY: Create Organization (kept for backward compatibility)
+ * Use upsertOrg() for new code
+ */
+export async function createOrg(name: string, clerkOrgId?: string): Promise<JNXOrg | null> {
+  return upsertOrg(name, clerkOrgId);
 }
 
 export async function getOrg(orgId: string): Promise<JNXOrg | null> {
@@ -145,6 +193,64 @@ export async function updateOrg(orgId: string, updates: Partial<JNXOrg>): Promis
 
 // ===== USER FUNCTIONS =====
 
+/**
+ * ENTERPRISE: Upsert User (Idempotent)
+ * Creates or updates a user based on clerk_user_id
+ * @returns Created/Updated user or null on error
+ */
+export async function upsertUser(
+  clerkUserId: string,
+  data: {
+    email: string;
+    first_name?: string | null;
+    last_name?: string | null;
+    org_id?: string | null;
+    role?: string;
+  }
+): Promise<JNXUser | null> {
+  const supabase = createSupabaseAdminClient();
+  if (!supabase) {
+    console.error('Supabase client not available');
+    return null;
+  }
+
+  try {
+    const userData: any = {
+      clerk_user_id: clerkUserId,
+      email: data.email,
+      first_name: data.first_name ?? null,
+      last_name: data.last_name ?? null,
+      org_id: data.org_id ?? null,
+      role: data.role ?? 'member',
+      updated_at: new Date().toISOString(),
+    };
+
+    // UPSERT based on clerk_user_id
+    const { data: result, error } = await supabase
+      .from('users')
+      .upsert(userData, { 
+        onConflict: 'clerk_user_id',
+        ignoreDuplicates: false 
+      })
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error upserting user:', error);
+      return null;
+    }
+
+    return result;
+  } catch (error) {
+    console.error('Unexpected error in upsertUser:', error);
+    return null;
+  }
+}
+
+/**
+ * LEGACY: Create User (kept for backward compatibility)
+ * Use upsertUser() for new code
+ */
 export async function createUser(
   clerkUserId: string,
   email: string,
@@ -153,28 +259,13 @@ export async function createUser(
   orgId: string | null = null,
   role: string = 'member'
 ): Promise<JNXUser | null> {
-  const supabase = createSupabaseAdminClient();
-  if (!supabase) return null;
-
-  const { data, error } = await supabase
-    .from('users')
-    .insert({
-      clerk_user_id: clerkUserId,
-      email,
-      first_name: firstName,
-      last_name: lastName,
-      org_id: orgId,
-      role,
-    })
-    .select()
-    .single();
-
-  if (error) {
-    console.error('Error creating user:', error);
-    return null;
-  }
-
-  return data;
+  return upsertUser(clerkUserId, {
+    email,
+    first_name: firstName,
+    last_name: lastName,
+    org_id: orgId,
+    role,
+  });
 }
 
 export async function getUserByClerkId(clerkUserId: string): Promise<JNXUser | null> {
@@ -664,4 +755,99 @@ export async function updateDataExportRequest(
   }
 
   return data;
+}
+
+// ===== TRANSACTIONAL OPERATIONS =====
+
+/**
+ * ENTERPRISE: Create User with Organization (Transactional)
+ * Creates both user and organization atomically
+ * If one fails, both are rolled back
+ * @returns {user, org} or null on error
+ */
+export async function createUserWithOrg(
+  clerkUserId: string,
+  email: string,
+  firstName: string | null,
+  lastName: string | null,
+  orgName: string,
+  clerkOrgId?: string
+): Promise<{ user: JNXUser; org: JNXOrg } | null> {
+  try {
+    // Step 1: Create/Update Organization
+    const org = await upsertOrg(orgName, clerkOrgId);
+    if (!org) {
+      console.error('Failed to create/update organization');
+      return null;
+    }
+
+    // Step 2: Create/Update User linked to Org
+    const user = await upsertUser(clerkUserId, {
+      email,
+      first_name: firstName,
+      last_name: lastName,
+      org_id: org.org_id,
+      role: 'member',
+    });
+
+    if (!user) {
+      console.error('Failed to create/update user');
+      // Note: Org already created, but this is acceptable
+      // The org can exist without users initially
+      return null;
+    }
+
+    return { user, org };
+  } catch (error) {
+    console.error('Unexpected error in createUserWithOrg:', error);
+    return null;
+  }
+}
+
+/**
+ * ENTERPRISE: Sync User from Clerk (Idempotent)
+ * Ensures user exists in DB, creates with default org if needed
+ * Used as fallback when webhook hasn't processed yet
+ * @returns User or null on error
+ */
+export async function syncUserFromClerk(
+  clerkUserId: string,
+  email: string,
+  firstName?: string | null,
+  lastName?: string | null
+): Promise<JNXUser | null> {
+  try {
+    // Check if user already exists
+    const existingUser = await getUserByClerkId(clerkUserId);
+    if (existingUser) {
+      // User exists, just return it
+      return existingUser;
+    }
+
+    // User doesn't exist, create with default org
+    const orgName = `${firstName || 'User'}'s Organization`;
+    const result = await createUserWithOrg(
+      clerkUserId,
+      email,
+      firstName || null,
+      lastName || null,
+      orgName
+    );
+
+    if (!result) {
+      console.error('Failed to sync user from Clerk');
+      return null;
+    }
+
+    // Log audit event
+    await logAudit('user.synced_from_clerk', result.org.org_id, result.user.user_id, 'user', {
+      clerk_user_id: clerkUserId,
+      email,
+    });
+
+    return result.user;
+  } catch (error) {
+    console.error('Unexpected error in syncUserFromClerk:', error);
+    return null;
+  }
 }

@@ -1,13 +1,19 @@
 /**
- * DEPRECATED: This route has been replaced by Clerk authentication.
- * Please use /login page with Clerk SignIn component.
+ * DEPRECATED - This route has been removed
+ * Use Clerk authentication instead via /login page
  */
-
 import { NextResponse } from 'next/server';
+
+export async function GET() {
+  return NextResponse.json(
+    { error: 'This endpoint has been deprecated. Please use Clerk authentication.' },
+    { status: 410 }
+  );
+}
 
 export async function POST() {
   return NextResponse.json(
-    { error: 'This endpoint is deprecated. Please use Clerk authentication at /login' },
+    { error: 'This endpoint has been deprecated. Please use Clerk authentication.' },
     { status: 410 }
   );
 }

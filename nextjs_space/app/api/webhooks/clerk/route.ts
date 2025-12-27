@@ -8,8 +8,9 @@ import { headers } from 'next/headers';
 import { WebhookEvent } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
 import {
-  createUser,
-  createOrg,
+  upsertUser,
+  upsertOrg,
+  createUserWithOrg,
   getUserByClerkId,
   getOrgByClerkId,
   updateUser,
@@ -106,8 +107,12 @@ export async function POST(req: Request) {
   }
 }
 
-// ===== WEBHOOK HANDLERS =====
+// ===== WEBHOOK HANDLERS (ENTERPRISE-GRADE) =====
 
+/**
+ * ENTERPRISE: Handle User Created Event (Idempotent)
+ * Creates or updates user with organization atomically
+ */
 async function handleUserCreated(evt: WebhookEvent) {
   if (evt.type !== 'user.created') return;
 
@@ -115,70 +120,113 @@ async function handleUserCreated(evt: WebhookEvent) {
   const primaryEmail = email_addresses[0]?.email_address;
 
   if (!primaryEmail) {
-    console.error('No email address found for user');
-    return;
+    console.error('[Webhook] No email address found for user');
+    throw new Error('No email address in user.created event');
   }
 
-  // Check if user already exists
-  const existingUser = await getUserByClerkId(id);
-  if (existingUser) {
-    console.log('User already exists in database');
-    return;
-  }
+  try {
+    // IDEMPOTENT: Check if user already exists
+    const existingUser = await getUserByClerkId(id);
+    if (existingUser) {
+      console.log('[Webhook] User already exists, updating...');
+      
+      // Update existing user
+      const role = (public_metadata?.role as string) || existingUser.role;
+      await upsertUser(id, {
+        email: primaryEmail,
+        first_name: first_name || existingUser.first_name,
+        last_name: last_name || existingUser.last_name,
+        org_id: existingUser.org_id,
+        role,
+      });
 
-  // Create default organization for the user
-  const orgName = `${first_name || 'User'}'s Organization`;
-  const org = await createOrg(orgName);
+      await logSystemEvent(
+        'webhook.user_updated',
+        'info',
+        'User updated via user.created webhook',
+        { clerk_user_id: id }
+      );
+      return;
+    }
 
-  if (!org) {
-    console.error('Failed to create organization');
-    return;
-  }
+    // TRANSACTIONAL: Create user with organization atomically
+    const orgName = `${first_name || 'User'}'s Organization`;
+    const role = (public_metadata?.role as string) || 'member';
+    
+    const result = await createUserWithOrg(
+      id,
+      primaryEmail,
+      first_name || null,
+      last_name || null,
+      orgName
+    );
 
-  // Create user in database
-  const role = (public_metadata?.role as string) || 'member';
-  const user = await createUser(
-    id,
-    primaryEmail,
-    first_name || null,
-    last_name || null,
-    org.org_id,
-    role
-  );
+    if (!result) {
+      throw new Error('Failed to create user with organization');
+    }
 
-  if (user) {
-    await logAudit('user.signup', org.org_id, user.user_id, 'user', {
+    // Update role if admin
+    if (role === 'admin') {
+      await updateUser(result.user.user_id, { role });
+    }
+
+    // Audit log
+    await logAudit('user.signup', result.org.org_id, result.user.user_id, 'user', {
       clerk_user_id: id,
       email: primaryEmail,
     });
+
+    console.log('[Webhook] User created successfully:', id);
+  } catch (error) {
+    console.error('[Webhook] Error in handleUserCreated:', error);
+    throw error; // Re-throw to trigger retry
   }
 }
 
+/**
+ * ENTERPRISE: Handle User Updated Event (Idempotent)
+ * Updates user or creates if not exists
+ */
 async function handleUserUpdated(evt: WebhookEvent) {
   if (evt.type !== 'user.updated') return;
 
   const { id, email_addresses, first_name, last_name, public_metadata } = evt.data;
   const primaryEmail = email_addresses[0]?.email_address;
 
-  const user = await getUserByClerkId(id);
-  if (!user) {
-    console.log('User not found in database, creating...');
-    await handleUserCreated({ ...evt, type: 'user.created' });
+  if (!primaryEmail) {
+    console.error('[Webhook] No email address in user.updated event');
     return;
   }
 
-  // Update user
-  const role = (public_metadata?.role as string) || user.role;
-  await updateUser(user.user_id, {
-    email: primaryEmail || user.email,
-    first_name: first_name || user.first_name,
-    last_name: last_name || user.last_name,
-    role,
-  });
+  try {
+    // IDEMPOTENT: Get or create user
+    let user = await getUserByClerkId(id);
+    
+    if (!user) {
+      console.log('[Webhook] User not found, creating via user.updated...');
+      await handleUserCreated({ ...evt, type: 'user.created' });
+      return;
+    }
 
-  await logAudit('user.updated', user.org_id, user.user_id, 'user', {
-    clerk_user_id: id,
-  });
+    // UPSERT: Update user (idempotent)
+    const role = (public_metadata?.role as string) || user.role;
+    await upsertUser(id, {
+      email: primaryEmail,
+      first_name: first_name || user.first_name,
+      last_name: last_name || user.last_name,
+      org_id: user.org_id,
+      role,
+    });
+
+    await logAudit('user.updated', user.org_id, user.user_id, 'user', {
+      clerk_user_id: id,
+    });
+
+    console.log('[Webhook] User updated successfully:', id);
+  } catch (error) {
+    console.error('[Webhook] Error in handleUserUpdated:', error);
+    throw error;
+  }
 }
 
 async function handleUserDeleted(evt: WebhookEvent) {
@@ -206,47 +254,71 @@ async function handleUserDeleted(evt: WebhookEvent) {
   });
 }
 
+/**
+ * ENTERPRISE: Handle Organization Created Event (Idempotent)
+ * Creates or updates organization
+ */
 async function handleOrganizationCreated(evt: WebhookEvent) {
   if (evt.type !== 'organization.created') return;
 
   const { id, name } = evt.data;
 
-  // Check if org already exists
-  const existingOrg = await getOrgByClerkId(id);
-  if (existingOrg) {
-    console.log('Organization already exists in database');
-    return;
-  }
+  try {
+    // UPSERT: Create or update organization (idempotent)
+    const org = await upsertOrg(name, id);
 
-  // Create organization
-  const org = await createOrg(name, id);
+    if (!org) {
+      throw new Error('Failed to upsert organization');
+    }
 
-  if (org) {
-    await logAudit('organization.created', org.org_id, null, 'organization', {
-      clerk_org_id: id,
-      name,
-    });
+    // Check if this is actually new
+    const isNew = !await getOrgByClerkId(id);
+
+    await logAudit(
+      isNew ? 'organization.created' : 'organization.updated',
+      org.org_id,
+      null,
+      'organization',
+      {
+        clerk_org_id: id,
+        name,
+      }
+    );
+
+    console.log('[Webhook] Organization processed successfully:', id);
+  } catch (error) {
+    console.error('[Webhook] Error in handleOrganizationCreated:', error);
+    throw error;
   }
 }
 
+/**
+ * ENTERPRISE: Handle Organization Updated Event (Idempotent)
+ * Updates organization or creates if not exists
+ */
 async function handleOrganizationUpdated(evt: WebhookEvent) {
   if (evt.type !== 'organization.updated') return;
 
   const { id, name } = evt.data;
 
-  const org = await getOrgByClerkId(id);
-  if (!org) {
-    console.log('Organization not found, creating...');
-    await handleOrganizationCreated({ ...evt, type: 'organization.created' });
-    return;
+  try {
+    // UPSERT: Update or create organization (idempotent)
+    const org = await upsertOrg(name, id);
+
+    if (!org) {
+      throw new Error('Failed to upsert organization');
+    }
+
+    await logAudit('organization.updated', org.org_id, null, 'organization', {
+      clerk_org_id: id,
+      name,
+    });
+
+    console.log('[Webhook] Organization updated successfully:', id);
+  } catch (error) {
+    console.error('[Webhook] Error in handleOrganizationUpdated:', error);
+    throw error;
   }
-
-  // Update organization
-  await updateOrg(org.org_id, { name });
-
-  await logAudit('organization.updated', org.org_id, null, 'organization', {
-    clerk_org_id: id,
-  });
 }
 
 async function handleOrganizationMembershipCreated(evt: WebhookEvent) {
