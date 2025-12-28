@@ -120,7 +120,7 @@ export async function trackHealthEvent(
 
     // 4. Critical Error Handling
     if (entry.severity === 'critical') {
-      await handleCriticalError(safeEntry)
+      await handleCriticalError(entry)
     }
 
     return { success: true, log_id: data.id }
