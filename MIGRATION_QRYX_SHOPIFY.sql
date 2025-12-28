@@ -283,8 +283,8 @@ CREATE TABLE IF NOT EXISTS qryx_product_cache (
   -- Product URL
   product_url TEXT,
   
-  -- Embeddings (for AI matching)
-  embedding_vector vector(768),        -- Requires pgvector extension (optional)
+  -- Embeddings (for AI matching) - DISABLED: Requires pgvector extension
+  -- embedding_vector vector(768),     -- Uncomment after enabling pgvector extension
   
   -- Cache Metadata
   last_synced_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
