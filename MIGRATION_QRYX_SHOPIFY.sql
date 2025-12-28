@@ -15,7 +15,7 @@ CREATE TABLE IF NOT EXISTS shopify_shops (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   
   -- JNX-OS Integration (CRITICAL)
-  org_id UUID NOT NULL REFERENCES orgs(id) ON DELETE CASCADE,
+  org_id UUID NOT NULL REFERENCES orgs(org_id) ON DELETE CASCADE,
   
   -- Shopify Data
   shop_domain TEXT NOT NULL UNIQUE,  -- mystore.myshopify.com
@@ -75,7 +75,7 @@ CREATE TABLE IF NOT EXISTS qryx_chat_sessions (
   
   -- Relations
   shop_id UUID NOT NULL REFERENCES shopify_shops(id) ON DELETE CASCADE,
-  user_id UUID REFERENCES users(id) ON DELETE SET NULL,  -- Optional: links to JNX user if known
+  user_id UUID REFERENCES users(user_id) ON DELETE SET NULL,  -- Optional: links to JNX user if known
   
   -- Session Data
   session_token TEXT NOT NULL UNIQUE,  -- Anonymous session identifier
