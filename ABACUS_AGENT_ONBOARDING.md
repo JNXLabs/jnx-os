@@ -3,8 +3,9 @@
 **Purpose:** This document provides a structured guide for new Abacus AI chat sessions to understand and extend the JNX Learning Platform.
 
 **Last Updated:** 2024-12-28  
-**Phase:** 1 Complete (SDK Foundation)  
-**Status:** Production-Ready ✅
+**Phase:** Building Qryx (First Product) - Phase 3 Complete  
+**Status:** Production-Ready ✅  
+**First Product:** Qryx (Shopify AI Sales Assistant)
 
 ---
 
@@ -16,11 +17,17 @@
 - Continuous improvement
 - Cross-product learning
 
+**Current Products:**
+- ✅ **Qryx** (Phase 3 Complete) - Shopify AI Sales Assistant with Gemini 2.0 Flash
+- 🚧 Trading Bot (Planned)
+- 🚧 More products coming...
+
 **Architecture:**
 ```
 JNX-OS Core → [Product Registry] → [Event Logger] → [API] → [Database]
                      ↓                    ↓
-                  Qryx            Trading Bot
+                  Qryx            Trading Bot (Planned)
+                  (Active)
 ```
 
 **Key Files:**

@@ -1,6 +1,6 @@
 # 🚀 JNX-OS Quick Start Guide
 
-Your JNX-OS v1 Phase 1 Foundation MVP is **ready to use**!
+Your JNX-OS v2 with **Qryx (Shopify AI Sales Assistant)** is **ready to use**!
 
 ## ⚡ What You Have
 
@@ -25,6 +25,14 @@ Your JNX-OS v1 Phase 1 Foundation MVP is **ready to use**!
 - Active sessions count
 - Audit logs viewer
 - User and organization management
+
+✅ **Qryx - Shopify AI Sales Assistant (Phase 3 Complete)**
+- 🤖 Gemini 2.0 Flash AI integration
+- 🛍️ Shopify OAuth & API client
+- 💬 E-commerce optimized chat system
+- 📊 Conversation tracking & analytics
+- 💰 Subscription billing ready
+- 🎨 Customizable chat widget
 
 ## 🎯 Next Steps (5 Minutes)
 

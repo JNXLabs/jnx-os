@@ -38,6 +38,12 @@ Security & GDPR:
 
 Webhook (Kritisch für Clerk→Supabase Sync):
   ✋ app/api/webhooks/clerk/route.ts
+
+**QRYX Product (Shopify AI Sales Assistant):**
+  ✋ lib/ai/gemini.ts            # Gemini 2.0 Flash client
+  ✋ lib/shopify/client.ts       # Shopify OAuth & API
+  ✋ lib/db/qryx-helpers.ts      # Qryx database operations
+  ✋ MIGRATION_QRYX_SHOPIFY.sql  # Qryx schema
 ```
 
 ### 2. **FORBIDDEN ACTIONS (Wird Production kaputt machen):**
@@ -213,12 +219,21 @@ yarn prisma studio
 
 **Environment Variables (Required):**
 ```bash
+# Core JNX-OS
 CLERK_PUBLISHABLE_KEY=pk_test_xxx
 CLERK_SECRET_KEY=sk_test_xxx
 CLERK_WEBHOOK_SECRET=whsec_xxx
 SUPABASE_URL=https://xxx.supabase.co
 SUPABASE_ANON_KEY=eyJxxx
 SUPABASE_SERVICE_ROLE_KEY=eyJxxx
+
+# Qryx (Shopify AI Sales Assistant) - Added Phase 3
+GEMINI_API_KEY=AIzaSyxxx                    # Google Gemini 2.0 Flash
+SHOPIFY_API_KEY=xxx                          # From Shopify Partner Dashboard
+SHOPIFY_API_SECRET=xxx                       # From Shopify Partner Dashboard
+SHOPIFY_APP_URL=https://your-app.vercel.app  # Your app URL
+SHOPIFY_SCOPES=read_products,write_script_tags
+SHOPIFY_WEBHOOK_SECRET=xxx                   # Generate with: openssl rand -hex 32
 ```
 
 ---
