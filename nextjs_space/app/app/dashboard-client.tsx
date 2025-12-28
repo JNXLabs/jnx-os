@@ -41,10 +41,10 @@ export default function DashboardClient({ user, jnxUser }: DashboardClientProps)
   };
 
   const menuItems = [
-    { id: 'home', label: 'Home', icon: LayoutDashboard },
-    { id: 'products', label: 'Products', icon: Package },
-    { id: 'settings', label: 'Settings', icon: Settings },
-    { id: 'billing', label: 'Billing', icon: CreditCard },
+    { id: 'home', label: 'Home', icon: LayoutDashboard, href: '/app' },
+    { id: 'products', label: 'Products', icon: Package, href: '/app/products' },
+    { id: 'settings', label: 'Settings', icon: Settings, href: '/app/settings' },
+    { id: 'billing', label: 'Billing', icon: CreditCard, href: '/app/billing' },
   ];
 
   return (
@@ -64,8 +64,9 @@ export default function DashboardClient({ user, jnxUser }: DashboardClientProps)
         {/* Navigation */}
         <nav className="flex-1 p-4 space-y-1">
           {menuItems.map((item) => (
-            <button
+            <Link
               key={item.id}
+              href={item.href}
               onClick={() => setActivePage(item.id)}
               className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-all ${
                 activePage === item.id
@@ -75,7 +76,7 @@ export default function DashboardClient({ user, jnxUser }: DashboardClientProps)
             >
               <item.icon className="w-5 h-5" />
               <span className="font-medium">{item.label}</span>
-            </button>
+            </Link>
           ))}
         </nav>
 
