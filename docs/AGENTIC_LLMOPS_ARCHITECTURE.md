@@ -1,6 +1,6 @@
 # 🤖 Agentic LLMOps Architecture for JNX-OS
 
-**Vision:** Self-healing, AI-supervised enterprise SaaS platform
+**Vision:** Self-evolving, AI-supervised enterprise SaaS platform
 
 **Status:** 🚧 Phase 0 - Architecture Design
 
@@ -8,25 +8,25 @@
 
 ## 📊 Executive Summary
 
-Die Gemini-Konversation beschreibt ein **"Surgical Assistant" System** - einen autonomen KI-Agenten, der:
+Die Gemini-Konversation beschreibt ein **"AI Evolution Assistant" System** - einen autonomen KI-Agenten, der:
 - ✅ Das System 24/7 überwacht
-- ✅ Performance-Probleme und Bugs **proaktiv** erkennt
-- ✅ Code-Fixes vorschlägt (mit Diff-View)
+- ✅ Performance-Probleme und Optimierungspotenziale **proaktiv** erkennt
+- ✅ Code-Verbesserungen vorschlägt (mit Diff-View)
 - ✅ **Niemals** automatisch deployed (Human-in-the-Loop)
 - ✅ Dependency-aware dank CodeWiki-Integration
 
 **Marktfähigkeit:** Dieses Feature ist ein **Enterprise-Verkaufsargument**:
-- **B2B:** "Wartungsfreies SaaS"
-- **Enterprise:** "AI-supervised Infrastructure"
-- **Developer:** "DevOps-Autopilot"
+- **B2B:** "SaaS, das sich kontinuierlich weiterentwickelt"
+- **Enterprise:** "AI-supervised Continuous Improvement"
+- **Developer:** "Intelligente Optimierungsvorschläge"
 
 ---
 
-## 🏗️ Die 3 Säulen der Self-Healing-Architektur
+## 🏗️ Die 3 Säulen der Self-Evolving-Architektur
 
 ### **Säule 1: Die Augen (Observability Pipeline)** 👁️
 
-**Was:** Globaler Error-Handler + Performance-Tracking
+**Was:** Intelligente System-Überwachung + Performance-Tracking
 
 **Wo implementieren:**
 ```
@@ -144,9 +144,9 @@ export function withErrorTracking<T extends Function>(fn: T, component: string):
 
 ---
 
-### **Säule 2: Das Gehirn (Background Observer)** 🧠
+### **Säule 2: Das Gehirn (AI Analysis Engine)** 🧠
 
-**Was:** Cron-Job mit Gemini/Abacus AI, der Fehler analysiert
+**Was:** Cron-Job mit Gemini/Abacus AI, der Optimierungspotenziale analysiert
 
 **Implementierung:**
 ```
@@ -312,16 +312,16 @@ JSON Array mit:
 
 ---
 
-### **Säule 3: Die Hände (Proposal System)** 🤲
+### **Säule 3: Die Hände (Evolution Proposal System)** 🤲
 
-**Was:** KI-Vorschläge speichern + Human-Approval-Workflow
+**Was:** KI-Optimierungsvorschläge speichern + Human-Approval-Workflow
 
 **Neue Supabase-Tabelle:**
 ```sql
 CREATE TABLE ai_proposals (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   module_name TEXT,              -- 'auth', 'database', 'api/webhooks/clerk'
-  issue_type TEXT NOT NULL,      -- 'bug', 'performance', 'security'
+  issue_type TEXT NOT NULL,      -- 'bug', 'performance', 'security', 'optimization'
   description TEXT NOT NULL,
   file_path TEXT NOT NULL,       -- z.B. 'lib/db/helpers.ts'
   old_code TEXT,                 -- Original Code
@@ -638,13 +638,13 @@ export default function AIAdvisorClient({ user, proposals }) {
 ## 💰 Monetization Strategy
 
 ### **JNX-OS Tier:**
-- **Free:** Nur Health Logs (kein AI)
-- **Pro:** 10 AI Proposals/Monat
-- **Enterprise:** Unlimited + Priority Support
+- **Free:** System Monitoring (Health Logs)
+- **Pro:** 10 KI-Optimierungsvorschläge/Monat
+- **Enterprise:** Unlimited Evolution Proposals + Priority Support
 
 ### **QRYX Integration:**
-- **Add-On Feature:** "AI-Supervised Data Pipeline"
-- **Value Proposition:** "Your data pipeline optimizes itself"
+- **Add-On Feature:** "AI-Powered Continuous Optimization"
+- **Value Proposition:** "Your data pipeline evolves and improves automatically"
 - **Pricing:** +$99/mo für QRYX Enterprise Kunden
 
 ---
