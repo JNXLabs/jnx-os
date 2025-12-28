@@ -191,6 +191,32 @@ export async function getShopifyShop(shop_domain: string): Promise<ShopifyShop |
 }
 
 /**
+ * Get Shopify shop by ID
+ */
+export async function getShopifyShopById(shop_id: string): Promise<ShopifyShop | null> {
+  const supabase = await createSupabaseServerClient();
+  if (!supabase) {
+    throw new Error("Supabase client not available");
+  }
+
+  const { data: shop, error } = await supabase
+    .from('shopify_shops')
+    .select('*')
+    .eq('id', shop_id)
+    .is('deleted_at', null)
+    .is('uninstalled_at', null)
+    .single();
+
+  if (error) {
+    if (error.code === 'PGRST116') return null; // Not found
+    console.error('[Qryx] Failed to get shopify shop by id:', error.message);
+    throw new Error('Failed to retrieve Shopify shop');
+  }
+
+  return shop as ShopifyShop;
+}
+
+/**
  * Get Shopify shop by org_id
  */
 export async function getShopifyShopByOrg(org_id: string): Promise<ShopifyShop | null> {
@@ -576,6 +602,7 @@ function getConversationsForPlan(plan_tier: string): number {
 export default {
   upsertShopifyShop,
   getShopifyShop,
+  getShopifyShopById,
   getShopifyShopByOrg,
   uninstallShopifyShop,
   createChatSession,

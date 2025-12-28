@@ -18,8 +18,15 @@ export interface LogEntry {
 /**
  * Structured logger class
  */
-class Logger {
+export class Logger {
   private appName: string = 'JNX-OS';
+  private context: string = '';
+
+  constructor(context?: string) {
+    if (context) {
+      this.context = context;
+    }
+  }
 
   /**
    * Log a message at a specific level

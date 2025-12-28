@@ -111,8 +111,8 @@ export async function GET(request: NextRequest) {
     const user = await upsertUser(clerkUser.id, {
       org_id: org.org_id,
       email: clerkUser.emailAddresses[0].emailAddress,
-      first_name: clerkUser.firstName || '',
-      last_name: clerkUser.lastName || '',
+      first_name: clerkUser.firstName,
+      last_name: clerkUser.lastName,
       role: 'shop_owner',
     });
 
