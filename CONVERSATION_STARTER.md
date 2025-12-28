@@ -239,21 +239,48 @@ yarn.lock -> /opt/hostedapp/node/root/app/yarn.lock ❌
 
 ### **Automatische Lösung (Installiert):**
 
-#### **1. Git Pre-Push Hook**
+#### **1. Git Pre-Commit Hook (Primary Defense)**
+- ✅ **Automatisch installiert** in `.git/hooks/pre-commit`
+- ✅ Konvertiert Symlinks zu echten Dateien **VOR** dem Commit
+- ✅ Staged die Änderung automatisch für den aktuellen Commit
+- ✅ **Garantiert:** yarn.lock ist im Commit eine echte Datei
+
+**Was passiert beim `git commit`:**
+```bash
+$ git commit -m "feat: add new feature"
+🔍 Detected yarn.lock symlink
+🔧 Converting to real file before commit...
+✅ yarn.lock converted and staged for commit
+[main abc1234] feat: add new feature
+```
+
+#### **2. Git Pre-Push Hook (Safety Net)**
 - ✅ **Automatisch installiert** in `.git/hooks/pre-push`
-- ✅ Prüft vor jedem `git push`, ob `yarn.lock` ein Symlink ist
-- ✅ Konvertiert automatisch zu echter Datei
-- ✅ Staged die Änderung automatisch
+- ✅ **BLOCKIERT** den Push wenn noch ein Symlink existiert
+- ✅ Verhindert versehentliche Symlink-Pushes zu GitHub
 
 **Was passiert beim `git push`:**
 ```bash
 $ git push origin main
-🔍 Checking for symlinks before push...
-✅ yarn.lock is already a real file
-🚀 Ready to push to GitHub
+✅ yarn.lock is a real file
+🚀 Push allowed
 ```
 
-#### **2. Deployment Verification Script**
+**Wenn Pre-Commit Hook übersprungen wurde:**
+```bash
+$ git push origin main
+❌ ERROR: yarn.lock is still a symlink!
+❌ Push BLOCKED to prevent Vercel build failure
+
+Quick Fix:
+  cd /home/ubuntu/jnx-os/nextjs_space
+  rm yarn.lock && cp /opt/hostedapp/node/root/app/yarn.lock .
+  git add yarn.lock
+  git commit --amend --no-edit
+  git push origin main
+```
+
+#### **3. Deployment Verification Script**
 - 📍 Location: `scripts/verify-deployment-ready.sh`
 - ✅ Prüft Symlinks, Environment Variables, package.json
 - ✅ Manuell vor wichtigen Deployments ausführen
