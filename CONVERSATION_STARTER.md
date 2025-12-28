@@ -222,6 +222,84 @@ SUPABASE_SERVICE_ROLE_KEY=eyJxxx
 
 ---
 
+## ⚠️ **CRITICAL: Symlink-Problem & Vercel Deployments**
+
+### **Was ist das Problem?**
+
+DeepAgent verwendet **Symlinks** für Effizienz (Zeiger auf zentrale Dateien). Diese funktionieren lokal, aber **NICHT auf Vercel**:
+
+```bash
+# Lokale Umgebung (funktioniert)
+yarn.lock -> /opt/hostedapp/node/root/app/yarn.lock ✅
+
+# Vercel Clone (funktioniert NICHT)
+yarn.lock -> /opt/hostedapp/node/root/app/yarn.lock ❌
+# Fehler: ENOENT: no such file or directory
+```
+
+### **Automatische Lösung (Installiert):**
+
+#### **1. Git Pre-Push Hook**
+- ✅ **Automatisch installiert** in `.git/hooks/pre-push`
+- ✅ Prüft vor jedem `git push`, ob `yarn.lock` ein Symlink ist
+- ✅ Konvertiert automatisch zu echter Datei
+- ✅ Staged die Änderung automatisch
+
+**Was passiert beim `git push`:**
+```bash
+$ git push origin main
+🔍 Checking for symlinks before push...
+✅ yarn.lock is already a real file
+🚀 Ready to push to GitHub
+```
+
+#### **2. Deployment Verification Script**
+- 📍 Location: `scripts/verify-deployment-ready.sh`
+- ✅ Prüft Symlinks, Environment Variables, package.json
+- ✅ Manuell vor wichtigen Deployments ausführen
+
+**Manuell ausführen:**
+```bash
+cd /home/ubuntu/jnx-os
+bash scripts/verify-deployment-ready.sh
+```
+
+### **Wenn der Fehler TROTZDEM auftritt:**
+
+**Quick Fix (in 30 Sekunden):**
+```bash
+# 1. Symlink durch echte Datei ersetzen
+cd /home/ubuntu/jnx-os/nextjs_space
+cp -L /opt/hostedapp/node/root/app/yarn.lock .
+
+# 2. Zu Git hinzufügen
+cd /home/ubuntu/jnx-os
+git add nextjs_space/yarn.lock
+git commit -m "fix: replace yarn.lock symlink with real file"
+git push origin main
+
+# 3. Vercel baut automatisch neu ✅
+```
+
+### **Warum passiert das?**
+
+**DeepAgent-Optimierung:**
+```
+Vorteile:
+✅ Speicherplatz sparen (zentrale node_modules)
+✅ Schnellere lokale Builds
+✅ Konsistente Versionen
+
+Nachteil:
+❌ Symlinks funktionieren nicht auf Vercel
+```
+
+**Lösung:**
+- Git Pre-Push Hook konvertiert automatisch
+- Oder: Manuell mit obigem Quick Fix
+
+---
+
 ## 💎 Production Quality Metrics (Erreicht)
 
 | Metrik | Before | After |
