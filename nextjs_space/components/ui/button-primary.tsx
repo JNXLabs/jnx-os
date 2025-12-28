@@ -16,7 +16,7 @@ const ButtonPrimary = React.forwardRef<HTMLButtonElement, ButtonPrimaryProps>(
     };
 
     const glowClasses = glow
-      ? 'shadow-[0_0_20px_-5px_rgba(6,182,212,0.5)] hover:shadow-[0_0_30px_-5px_rgba(6,182,212,0.7)]'
+      ? 'shadow-glow-primary hover:shadow-glow-hover'
       : '';
 
     return (

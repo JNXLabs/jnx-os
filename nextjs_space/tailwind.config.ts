@@ -22,13 +22,31 @@ const config: Config = {
         lg: 'var(--radius)',
         md: 'calc(var(--radius) - 2px)',
         sm: 'calc(var(--radius) - 4px)',
+        // JNX Design System Radius
+        'button': '0.5rem',    // 8px
+        'card': '0.75rem',     // 12px
+        'input': '0.75rem',    // 12px
+        'bubble': '1rem',      // 16px
+      },
+      boxShadow: {
+        // JNX Design System Shadows
+        'glow-primary': '0 0 20px -5px rgba(6, 182, 212, 0.5)',
+        'glow-hover': '0 0 30px -5px rgba(6, 182, 212, 0.7)',
+        'glow-intense': '0 0 40px -5px rgba(6, 182, 212, 0.9)',
+        'input': '0 0 20px rgba(0, 0, 0, 0.3)',
+        'card': '0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.2)',
       },
       colors: {
-        // JNX Dark Design System
+        // JNX Dark Design System - Complete Palette
         jnx: {
-          dark: '#030712',
-          card: '#0b1221',
-          primary: '#06b6d4',
+          dark: '#030712',       // Very dark blue/black (base background)
+          darker: '#060a14',     // Deeper background
+          card: '#0b1221',       // Card background
+          sidebar: 'rgba(2, 6, 23, 0.5)', // Sidebar background
+          input: 'rgba(15, 23, 42, 0.5)', // Input background
+          primary: '#06b6d4',    // Cyan 500 (primary accent)
+          secondary: '#14b8a6',  // Teal 500 (secondary accent)
+          accent: '#3b82f6',     // Blue 600 (tertiary accent)
         },
         background: 'hsl(var(--background))',
         foreground: 'hsl(var(--foreground))',
@@ -88,10 +106,20 @@ const config: Config = {
             height: '0',
           },
         },
+        // JNX Design System Animation
+        'superGlow': {
+          '0%, 100%': {
+            boxShadow: '0 0 20px -5px rgba(6, 182, 212, 0.5)',
+          },
+          '50%': {
+            boxShadow: '0 0 40px -5px rgba(6, 182, 212, 0.9)',
+          },
+        },
       },
       animation: {
         'accordion-down': 'accordion-down 0.2s ease-out',
         'accordion-up': 'accordion-up 0.2s ease-out',
+        'super-glow': 'superGlow 2s ease-in-out infinite',
       },
     },
   },

@@ -17,7 +17,7 @@ const InputField = React.forwardRef<HTMLInputElement, InputFieldProps>(
         <input
           ref={ref}
           className={cn(
-            'w-full bg-slate-900/50 border border-slate-700 rounded-xl py-4 text-white placeholder:text-slate-500 focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 transition-all shadow-[0_0_20px_rgba(0,0,0,0.3)]',
+            'w-full bg-slate-900/50 border border-slate-700 rounded-xl py-4 text-white placeholder:text-slate-500 focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 transition-all shadow-input',
             icon ? 'pl-14 pr-6' : 'pl-6 pr-6',
             className
           )}

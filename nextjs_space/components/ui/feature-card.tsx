@@ -19,7 +19,7 @@ export function FeatureCard({
   return (
     <div
       className={cn(
-        'group relative p-8 bg-slate-900/40 border border-slate-800/60 rounded-xl transition-all duration-300 hover:bg-slate-900/60',
+        'group relative p-8 bg-slate-900/40 border border-slate-800/60 rounded-xl backdrop-blur-sm transition-all duration-300 hover:bg-slate-900/60',
         className
       )}
     >
