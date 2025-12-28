@@ -12,7 +12,7 @@
  */
 
 import { createClient } from '@supabase/supabase-js'
-import { redactSensitiveData } from '@/lib/privacy/redaction'
+import { redactAll } from '@/lib/privacy/redaction'
 
 // ================================================================
 // TYPES
@@ -82,13 +82,13 @@ export async function trackHealthEvent(
     const safeEntry = {
       ...entry,
       error_message: entry.error_message 
-        ? redactSensitiveData(entry.error_message) 
+        ? redactAll(entry.error_message) 
         : null,
       stack_trace: entry.stack_trace 
-        ? redactSensitiveData(entry.stack_trace) 
+        ? redactAll(entry.stack_trace) 
         : null,
       metadata: entry.metadata 
-        ? JSON.parse(redactSensitiveData(JSON.stringify(entry.metadata))) 
+        ? JSON.parse(redactAll(JSON.stringify(entry.metadata))) 
         : null
     }
 
