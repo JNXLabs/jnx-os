@@ -3,6 +3,9 @@ import './globals.css';
 import { ClerkProvider } from '@clerk/nextjs';
 import { dark } from '@clerk/themes';
 
+// Register all JNX products (auto-discovery)
+import '@/lib/jnx-products';
+
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'),
   title: 'JNX-OS - The Neural Engine For SaaS Logic',
