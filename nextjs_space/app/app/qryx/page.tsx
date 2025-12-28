@@ -52,16 +52,17 @@ export default async function QryxDashboardPage() {
     );
   }
 
-  // Render dashboard with shop data
+  // Ensure user is loaded before rendering
   if (!user) {
     redirect('/login');
   }
   
+  // Convert Clerk user to plain object for client component
   const plainUser = {
     id: user.id,
-    email: user.emailAddresses?.[0]?.emailAddress || null,
-    firstName: user.firstName || null,
-    lastName: user.lastName || null,
+    email: user.emailAddresses?.[0]?.emailAddress || '',
+    firstName: user.firstName || '',
+    lastName: user.lastName || '',
   };
   
   return <QryxDashboardClient shop={shop} user={plainUser} />;
