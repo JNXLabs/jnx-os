@@ -145,7 +145,8 @@ export default async function ProductsPage() {
             </div>
           ) : (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {products.map((product): React.ReactNode => (
+              {products.map((product) => {
+                return (
                 <div
                   key={product.id}
                   className="bg-slate-900/40 border border-slate-800 rounded-xl p-6 hover:bg-slate-900/60 transition-all backdrop-blur-sm group"
@@ -167,7 +168,7 @@ export default async function ProductsPage() {
                   </div>
 
                   {/* Product Metadata */}
-                  {product.metadata && product.metadata.tags && Array.isArray(product.metadata.tags) && (
+                  {product.metadata && product.metadata.tags && Array.isArray(product.metadata.tags) ? (
                     <div className="mb-4">
                       <div className="flex flex-wrap gap-2">
                         {(product.metadata.tags as unknown as string[]).slice(0, 4).map((tag: string) => (
@@ -180,7 +181,7 @@ export default async function ProductsPage() {
                         ))}
                       </div>
                     </div>
-                  )}
+                  ) : null}
 
                   {/* Product Stats */}
                   <div className="grid grid-cols-3 gap-4 mb-4">
@@ -208,16 +209,17 @@ export default async function ProductsPage() {
                         </ButtonPrimary>
                       </Link>
                     )}
-                    {product.metadata?.documentation_url && typeof product.metadata.documentation_url === 'string' && (
+                    {product.metadata?.documentation_url && typeof product.metadata.documentation_url === 'string' ? (
                       <Link href={String(product.metadata.documentation_url)}>
                         <ButtonSecondary size="sm">
                           <ExternalLink className="w-4 h-4" />
                         </ButtonSecondary>
                       </Link>
-                    )}
+                    ) : null}
                   </div>
                 </div>
-              ))}
+                )
+              })}
             </div>
           )}
         </div>
