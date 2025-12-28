@@ -205,10 +205,11 @@ yarn prisma studio
 ## 🚀 Deployment Status
 
 **Current Deployment:**
-- ✅ GitHub: `JNXLabs/jnx-os` (main branch)
-- ✅ Vercel: Auto-Deploy aktiv
+- ✅ GitHub: `JNXLabs/jnx-os` (main branch, Commit: `3aa8185`)
+- ✅ Vercel: Auto-Deploy aktiv & erfolgreich
 - ✅ Database: Supabase PostgreSQL (Schema v2)
 - ✅ Build: Passing (Tailwind CSS v3.3.3)
+- ✅ Symlink-Schutz: Dual-Hook-Strategie aktiv (Pre-Commit + Pre-Push)
 
 **Environment Variables (Required):**
 ```bash
@@ -322,8 +323,27 @@ Nachteil:
 ```
 
 **Lösung:**
-- Git Pre-Push Hook konvertiert automatisch
+- Dual-Hook-Strategie (Pre-Commit + Pre-Push)
 - Oder: Manuell mit obigem Quick Fix
+
+### **✅ Erfolgsbestätigung (28. Dez 2024):**
+
+Die Dual-Hook-Strategie wurde erfolgreich implementiert und getestet:
+
+```
+Commit b6161fb: Sofort-Fix (yarn.lock konvertiert)
+├─ Vercel Build: ✅ Erfolgreich
+├─ Zeit: ~3 Minuten
+└─ Status: Production deployed
+
+Commit 3aa8185: Dual-Hook-Strategie implementiert
+├─ Pre-Commit Hook: ✅ Installiert
+├─ Pre-Push Hook: ✅ Aktualisiert
+├─ Push Test: ✅ "yarn.lock is a real file"
+└─ Vercel Build: ✅ Erfolgreich
+```
+
+**Resultat:** Symlink-Problem permanent gelöst mit 2-Layer Protection.
 
 ---
 
@@ -761,6 +781,57 @@ git push origin main  # Neuer Deployment
 
 ---
 
+## 🔧 **Git Hooks Installation (für neue Conversations)**
+
+**WICHTIG:** Git Hooks in `.git/hooks/` können nicht im Repo gespeichert werden. Bei neuen Conversations müssen sie aus `scripts/` wiederhergestellt werden:
+
+```bash
+# Hooks aus Backup wiederherstellen
+cp /home/ubuntu/jnx-os/scripts/git-hooks-pre-commit.sh /home/ubuntu/jnx-os/.git/hooks/pre-commit
+cp /home/ubuntu/jnx-os/scripts/git-hooks-pre-push.sh /home/ubuntu/jnx-os/.git/hooks/pre-push
+
+# Ausführbar machen
+chmod +x /home/ubuntu/jnx-os/.git/hooks/pre-commit
+chmod +x /home/ubuntu/jnx-os/.git/hooks/pre-push
+
+# Testen
+cd /home/ubuntu/jnx-os
+git status  # Sollte yarn.lock Status zeigen
+```
+
+**Verification:**
+```bash
+# Check ob Hooks installiert sind
+ls -lh /home/ubuntu/jnx-os/.git/hooks/ | grep -E "pre-commit|pre-push"
+# Expected: Zwei ausführbare Dateien (-rwxr-xr-x)
+
+# Test Pre-Commit Hook (macht automatischen Symlink-Fix)
+echo "test" > /home/ubuntu/jnx-os/test.txt
+git add test.txt
+git commit -m "test: verify hooks"
+# Expected: "🔍 Detected yarn.lock symlink" oder "✅ yarn.lock is already a real file"
+
+# Test Pre-Push Hook (blockiert wenn Symlink)
+git push origin main
+# Expected: "✅ yarn.lock is a real file" → Push allowed
+#       OR: "❌ ERROR: yarn.lock is still a symlink!" → Push BLOCKED
+```
+
+**Warum ist das nötig?**
+- Git ignoriert `.git/hooks/` standardmäßig (nicht im Repo)
+- Hooks müssen lokal existieren, um zu funktionieren
+- Backup in `scripts/` erlaubt Wiederherstellung
+- **Ohne Hooks:** Symlink-Problem kann wieder auftreten!
+
+**Quick Check (ob Hooks aktiv sind):**
+```bash
+# Beide sollten existieren und ausführbar sein:
+test -x /home/ubuntu/jnx-os/.git/hooks/pre-commit && echo "✅ Pre-Commit Hook aktiv" || echo "❌ Pre-Commit Hook fehlt!"
+test -x /home/ubuntu/jnx-os/.git/hooks/pre-push && echo "✅ Pre-Push Hook aktiv" || echo "❌ Pre-Push Hook fehlt!"
+```
+
+---
+
 ## 🔥 Emergency Contacts
 
 **Bei kritischen Problemen:**
@@ -797,10 +868,11 @@ git push origin main  # Neuer Deployment
 
 ---
 
-**Version:** 2.0  
-**Last Updated:** 2024-12-27  
-**Status:** ✅ Production Ready  
+**Version:** 2.1  
+**Last Updated:** 2024-12-28  
+**Status:** ✅ Production Ready (Symlink-Problem permanent gelöst)  
 **Deployment:** Vercel (Auto-Deploy from GitHub)  
+**Latest Commit:** 3aa8185 (Dual-Hook-Strategie)  
 
 ---
 
