@@ -2,10 +2,13 @@
 
 **Purpose:** This document provides a structured guide for new Abacus AI chat sessions to understand and extend the JNX Learning Platform.
 
-**Last Updated:** 2024-12-28  
-**Phase:** Building Qryx (First Product) - Phase 4 Complete ✅  
-**Status:** Database & Backend Ready - Awaiting Shopify Config ⏳  
+**Last Updated:** 2024-12-29  
+**Phase:** Building Qryx (First Product) - Phase 4 Complete ✅ | Phase 5 In Progress 🚧  
+**Status:** Backend Ready ✅ | **CRITICAL:** SaaS Flow Redesign Required ⚠️  
 **First Product:** Qryx (Shopify AI Sales Assistant)
+
+**🚨 CRITICAL DISCOVERY (2024-12-29):**  
+The original installation flow was **fundamentally incorrect**. This is NOT a simple Shopify OAuth app - it's a **full SaaS product with billing, subscriptions, and multi-product support**. See "Phase 5 Requirements" section below for complete details.
 
 ---
 
@@ -482,3 +485,197 @@ try {
 **Phase:** 1 Complete  
 **Status:** Production-Ready ✅  
 **Last Updated:** 2024-12-28
+
+---
+
+## 🚨 Phase 5: SaaS Installation Flow & Billing (IN PROGRESS)
+
+### Critical Redesign Required
+
+**Discovery Date:** 2024-12-29  
+**Issue:** The original Qryx installation flow was designed as a **direct Shopify OAuth app**, but the business model requires a **full SaaS platform with billing**.
+
+### ❌ What Was Wrong:
+```
+Shopify App Store → Install → OAuth → Done
+```
+This would allow anyone to install without payment or account creation.
+
+### ✅ Correct Multi-Product SaaS Flow:
+
+```
+1. Shopify App Store → "Install Qryx"
+   ↓
+2. www.jnxlabs.ai/api/qryx/install?shop=merchant.myshopify.com
+   ↓
+3. Save shop parameter in session (encrypted cookie/DB)
+   ↓
+4. Redirect to /login (or /signup for new users)
+   ↓
+5. NEW USER PATH:
+   - Registration form (email, password, name)
+   - Clerk User created
+   - Clerk Organization created
+   ↓
+6. Redirect to /products/qryx/setup
+   ↓
+7. PRODUCT SELECTION & PRICING:
+   ┌─────────────────────────────────┐
+   │ QRYX - AI Sales Assistant       │
+   ├─────────────────────────────────┤
+   │ STARTER       - $29/mo          │
+   │ PROFESSIONAL  - $99/mo ⭐       │
+   │ ENTERPRISE    - Custom          │
+   └─────────────────────────────────┘
+   ↓
+8. User selects plan → "Subscribe"
+   ↓
+9. STRIPE CHECKOUT SESSION
+   - Customer payment info
+   - Subscription created
+   - Webhook: checkout.session.completed
+   ↓
+10. Payment Success → Subscription in DB
+    ↓
+11. NOW: Trigger Shopify OAuth (retrieve saved shop parameter)
+    ↓
+12. Merchant approves OAuth permissions
+    ↓
+13. CALLBACK: /api/qryx/callback
+    - Link shop to user's organization
+    - Install widget (Script Tag)
+    - Create initial configuration
+    ↓
+14. Redirect to Dashboard
+    ✅ Qryx Connected
+    - Subscription status visible
+    - Widget configuration available
+    - Analytics enabled
+```
+
+### 🔧 Required Components (Not Yet Built):
+
+#### 1. **Shop Session Management** ❌
+**File:** `lib/session/shop-session.ts`  
+**Purpose:** Preserve the `shop` parameter through multiple redirects  
+**Implementation:**
+- Encrypted session cookie OR
+- Database state table
+
+#### 2. **Product Selection Page** ❌
+**File:** `app/products/qryx/setup/page.tsx`  
+**Features:**
+- Display Qryx pricing tiers
+- Plan comparison table
+- "Subscribe" button per plan
+- Check if user already has subscription
+
+#### 3. **Stripe Integration** ❌
+**Files Required:**
+- `lib/stripe/client.ts` - Stripe SDK setup
+- `app/api/stripe/checkout/route.ts` - Create checkout session
+- `app/api/stripe/webhook/route.ts` - Handle subscription events
+- `lib/db/billing-helpers.ts` - Subscription CRUD operations
+
+**Stripe Webhooks to Handle:**
+- `checkout.session.completed` → Create subscription in DB
+- `customer.subscription.updated` → Update plan/status
+- `customer.subscription.deleted` → Cancel subscription
+- `invoice.payment_succeeded` → Extend subscription
+- `invoice.payment_failed` → Suspend access
+
+#### 4. **Installation Flow Update** ⚠️ **CRITICAL**
+**File:** `app/api/qryx/install/route.ts`  
+**Current Behavior (WRONG):**
+```typescript
+// Directly redirects to Shopify OAuth
+const authUrl = await getAuthorizationUrl(shop, state);
+return NextResponse.redirect(authUrl);
+```
+
+**Required Behavior:**
+```typescript
+// Save shop parameter
+await setShopSession(shop);
+
+// Redirect to login
+const loginUrl = new URL('/login', request.url);
+loginUrl.searchParams.set('redirect', '/products/qryx/setup');
+return NextResponse.redirect(loginUrl);
+```
+
+#### 5. **OAuth Trigger After Payment** ❌
+**File:** `app/api/qryx/start-oauth/route.ts` (NEW)  
+**Purpose:** Initiated AFTER successful Stripe payment  
+**Logic:**
+1. Verify user has active subscription
+2. Retrieve saved shop parameter
+3. Generate OAuth URL
+4. Return to frontend for redirect
+
+#### 6. **Subscription Management UI** ❌
+**File:** `app/app/billing/page.tsx`  
+**Features:**
+- Current plan display
+- Usage statistics (conversations used / limit)
+- Billing history
+- Upgrade/Downgrade options
+- Cancellation flow
+- Invoice download
+
+### 📊 Implementation Priority:
+
+**Phase 5A - Core Flow (NEXT):**
+1. ✅ Shop session management (`lib/session/shop-session.ts`)
+2. ✅ Update installation flow (`app/api/qryx/install/route.ts`)
+3. ✅ Product selection page (`app/products/qryx/setup/page.tsx`)
+4. ✅ Stripe checkout integration
+5. ✅ OAuth trigger after payment (`app/api/qryx/start-oauth/route.ts`)
+
+**Phase 5B - Subscription Management:**
+1. ✅ Stripe webhook handler
+2. ✅ Billing dashboard UI
+3. ✅ Usage tracking
+4. ✅ Plan upgrade/downgrade logic
+
+**Phase 5C - Polish:**
+1. ✅ Error handling & recovery
+2. ✅ Email notifications (payment success/failed)
+3. ✅ Admin subscription management
+4. ✅ Analytics & reporting
+
+### 🧪 Test Environment:
+- **Test Shop:** `shopbotv3.myshopify.com`
+- **Production URL:** `https://www.jnxlabs.ai`
+- **Shopify App URL:** Should be set to `https://www.jnxlabs.ai/api/qryx/install`
+- **Redirect URI:** `https://www.jnxlabs.ai/api/qryx/callback` ✅ (already configured)
+
+### ⚠️ Current Blockers:
+- ❌ No Stripe integration (SDK, checkout, webhooks)
+- ❌ No product selection/pricing page
+- ❌ Installation flow bypasses login/payment
+- ❌ No subscription management system
+- ❌ No billing dashboard
+
+### 🎯 Success Criteria for Phase 5:
+- [ ] User can install Qryx from Shopify App Store
+- [ ] User is prompted to login/register at JNX
+- [ ] User can view and select pricing plans
+- [ ] Payment is processed securely via Stripe
+- [ ] Subscription is created in database
+- [ ] OAuth happens ONLY after successful payment
+- [ ] Widget is installed automatically
+- [ ] Dashboard displays subscription status
+- [ ] User can manage billing settings
+
+### 📚 Related Documentation:
+- See `CONVERSATION_STARTER.md` for detailed flow diagrams
+- See `ENVIRONMENT_VARIABLES_STATUS.md` for Shopify config status
+- See `docs/QRYX_PRICING_STRATEGY.md` for pricing tiers (if exists)
+
+---
+
+**Version:** 1.0.0  
+**Phase:** 4 Complete | 5 In Progress  
+**Status:** Backend Ready ✅ | SaaS Flow Redesign Required ⚠️  
+**Last Updated:** 2024-12-29

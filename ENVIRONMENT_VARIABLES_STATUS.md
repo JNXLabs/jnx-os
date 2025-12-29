@@ -1,7 +1,10 @@
 # Environment Variables Status
 
-**Last Updated:** 2024-12-28  
+**Last Updated:** 2024-12-29  
 **Purpose:** Zentrale Übersicht aller Environment Variables und deren Deployment-Status
+
+**🚨 CRITICAL UPDATE (2024-12-29):**  
+Production URL changed from `jnx-os.vercel.app` to `www.jnxlabs.ai`. All Shopify configuration updated accordingly.
 
 ---
 
@@ -12,7 +15,7 @@
 | **Clerk Auth** | ✅ Complete | ✅ Deployed | N/A | N/A |
 | **Supabase DB** | ✅ Complete | ✅ Deployed | ✅ Active | N/A |
 | **Gemini AI** | ✅ Complete | ✅ Deployed | N/A | N/A |
-| **Shopify API** | ⚠️ Partial | ⚠️ Needs Update | N/A | ✅ Configured |
+| **Shopify API** | ✅ Complete | ✅ Deployed | N/A | ✅ Configured |
 
 ---
 
@@ -44,7 +47,7 @@ cd /home/ubuntu/jnx-os/nextjs_space
 grep "CLERK" .env
 
 # Test in production:
-https://jnx-os.vercel.app/login
+https://www.jnxlabs.ai/login
 ```
 
 ---
@@ -117,76 +120,51 @@ GEMINI_API_KEY=AIzaSyCQBwsACuoGh4X8PUCJ2LmD9-HiCz6qaGU
 ```bash
 SHOPIFY_API_KEY=6e62aef5f8013048ca5b446fa86c6fae
 SHOPIFY_API_SECRET=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
-SHOPIFY_APP_URL=https://example.com  # ⚠️ NEEDS UPDATE
+SHOPIFY_APP_URL=https://www.jnxlabs.ai  # ✅ UPDATED
 SHOPIFY_SCOPES=read_products,read_product_listings,read_customers,read_orders
 SHOPIFY_WEBHOOK_SECRET=to_be_generated_by_shopify  # ⚠️ PLACEHOLDER
 ```
 
 ### Status:
-- ✅ **Local (.env):** API credentials present
-- ⚠️ **Vercel Production:** Needs update (see Action Items below)
+- ✅ **Local (.env):** All variables present and correct
+- ✅ **Vercel Production:** All variables deployed (2024-12-29)
 - ✅ **Shopify Partner Dashboard:** App created with API credentials
-- ⚠️ **App URL:** Currently set to `https://example.com` (placeholder)
-- ⚠️ **Redirect URIs:** Need configuration in Shopify Partner Dashboard
+- ✅ **App URL:** Set to `https://www.jnxlabs.ai`
+- ✅ **Redirect URIs:** Configured as `https://www.jnxlabs.ai/api/qryx/callback`
 
-### Required Actions:
+### ⚠️ IMPORTANT NOTE - Phase 5 Redesign:
+The installation flow requires significant changes. This is NOT a simple OAuth app - it's a full SaaS platform with:
+- User registration/login
+- Product selection
+- Stripe payment integration
+- Subscription management
 
-#### 1. Update Vercel Environment Variables
+See `CONVERSATION_STARTER.md` and `ABACUS_AGENT_ONBOARDING.md` for complete Phase 5 requirements.
 
-**Add/Update these variables in Vercel Dashboard → Settings → Environment Variables:**
+### ✅ Configuration Complete (2024-12-29):
 
-```bash
-SHOPIFY_API_KEY=6e62aef5f8013048ca5b446fa86c6fae
-SHOPIFY_API_SECRET=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
-SHOPIFY_APP_URL=https://jnx-os.vercel.app
-SHOPIFY_SCOPES=read_products,read_product_listings,read_customers,read_orders
-```
+**Completed Actions:**
+1. ✅ Vercel environment variables updated
+2. ✅ Shopify Partner Dashboard configured:
+   - App URL: `https://www.jnxlabs.ai`
+   - Redirect URI: `https://www.jnxlabs.ai/api/qryx/callback`
+   - API Scopes: `read_products,read_product_listings,read_customers,read_orders`
+3. ✅ Vercel redeployed without build cache
+4. ✅ Local `.env` synced with production
 
-**Environments:** Check ✅ Production, ✅ Preview, ✅ Development
+### 🧪 Test Shop:
+- **Domain:** `shopbotv3.myshopify.com`
+- **Purpose:** End-to-end testing of installation flow
 
-#### 2. Update Shopify Partner Dashboard
+### 🚀 Next Steps (Phase 5):
+Before testing the full installation flow, the following components must be built:
+1. Shop session management (`lib/session/shop-session.ts`)
+2. Product selection page (`/app/products/qryx/setup/page.tsx`)
+3. Stripe integration (checkout + webhooks)
+4. Installation flow redirect (update `/api/qryx/install/route.ts`)
+5. OAuth trigger after payment (`/api/qryx/start-oauth/route.ts`)
 
-**Navigate to:** [Shopify Partner Dashboard](https://partners.shopify.com) → Your App
-
-**Update these settings:**
-
-1. **App URL:**
-   ```
-   https://jnx-os.vercel.app
-   ```
-
-2. **Allowed redirection URL(s):**
-   ```
-   https://jnx-os.vercel.app/api/shopify/callback
-   ```
-
-3. **API scopes:**
-   ```
-   read_products,read_product_listings,read_customers,read_orders
-   ```
-   **⚠️ WICHTIG:** Kommas OHNE Leerzeichen!
-
-#### 3. Redeploy Vercel
-
-**After setting variables:**
-- Go to Vercel Dashboard → Deployments
-- Click latest deployment → "Redeploy"
-- ❌ **DO NOT** check "Use existing Build Cache"
-- Wait 2-3 minutes for deployment
-
-### Verification After Setup:
-
-```bash
-# 1. Check Qryx Dashboard
-https://jnx-os.vercel.app/app/qryx
-
-# Expected: "Qryx Not Installed" (not "Configuration Error")
-
-# 2. Test Installation Flow
-# Click "Install Qryx on Shopify" button
-# Should redirect to Shopify OAuth
-# Format: https://YOUR-STORE.myshopify.com/admin/oauth/authorize?...
-```
+**See `CONVERSATION_STARTER.md` for detailed implementation requirements.**
 
 ---
 
@@ -195,7 +173,7 @@ https://jnx-os.vercel.app/app/qryx
 ### Variables:
 ```bash
 NEXT_PUBLIC_APP_URL=http://localhost:3000  # Local development
-# Production: https://jnx-os.vercel.app (implicit)
+# Production: https://www.jnxlabs.ai (implicit)
 ```
 
 ### Endpoints:
@@ -277,7 +255,7 @@ NEXT_PUBLIC_APP_URL=http://localhost:3000  # Local development
 
 ```bash
 # 1. Check health endpoint
-curl https://jnx-os.vercel.app/api/system/health
+curl https://www.jnxlabs.ai/api/system/health
 
 # 2. Check Vercel Function Logs
 # Go to: Vercel Dashboard → Logs → Filter by Function
@@ -322,14 +300,14 @@ node /home/ubuntu/jnx-os/nextjs_space/test-qryx-shop.js
 **Solutions:**
 ```bash
 # 1. Verify SHOPIFY_APP_URL matches deployment
-echo $SHOPIFY_APP_URL  # Should be: https://jnx-os.vercel.app
+echo $SHOPIFY_APP_URL  # Should be: https://www.jnxlabs.ai
 
 # 2. Check Shopify Partner Dashboard
 # Allowed redirection URLs must include:
-# https://jnx-os.vercel.app/api/shopify/callback
+# https://www.jnxlabs.ai/api/shopify/callback
 
 # 3. Test API credentials
-curl https://jnx-os.vercel.app/api/shopify/install?shop=YOUR-STORE.myshopify.com
+curl https://www.jnxlabs.ai/api/shopify/install?shop=YOUR-STORE.myshopify.com
 ```
 
 ### Issue: Clerk Webhooks Not Firing
@@ -342,7 +320,7 @@ curl https://jnx-os.vercel.app/api/shopify/install?shop=YOUR-STORE.myshopify.com
 **Solutions:**
 ```bash
 # 1. Verify webhook endpoint
-curl -X POST https://jnx-os.vercel.app/api/webhooks/clerk
+curl -X POST https://www.jnxlabs.ai/api/webhooks/clerk
 
 # 2. Check CLERK_WEBHOOK_SECRET matches Clerk Dashboard
 # Clerk Dashboard → Webhooks → Webhook Signing Secret
@@ -403,11 +381,14 @@ curl -X POST https://jnx-os.vercel.app/api/webhooks/clerk
 | **Supabase DB** | 🟢 Operational | 2024-12-28 |
 | **Gemini AI** | 🟢 Operational | 2024-12-28 |
 | **Qryx Database** | 🟢 Operational | 2024-12-28 |
-| **Shopify Integration** | 🟡 Pending Config | 2024-12-28 |
-| **Vercel Deployment** | 🟢 Operational | 2024-12-28 |
+| **Shopify Integration** | 🟢 Configured | 2024-12-29 |
+| **Vercel Deployment** | 🟢 Operational | 2024-12-29 |
+
+**⚠️ Note:** Shopify configuration is complete, but Phase 5 (SaaS Installation Flow) requires additional components before end-to-end testing can proceed.
 
 ---
 
 **Document Maintained By:** Abacus AI DeepAgent  
-**Last Updated:** 2024-12-28 21:48 UTC  
-**Next Review:** Before Shopify installation testing
+**Last Updated:** 2024-12-29 12:20 UTC  
+**Next Review:** After Phase 5A implementation  
+**Related Documents:** `CONVERSATION_STARTER.md`, `ABACUS_AGENT_ONBOARDING.md`

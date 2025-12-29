@@ -518,7 +518,7 @@ export async function getBillingCustomer(orgId: string): Promise<BillingCustomer
   if (!supabase) return null;
 
   const { data, error } = await supabase
-    .from('billing_customers')
+    .from('billing_subscriptions')
     .select('*')
     .eq('org_id', orgId)
     .single();
@@ -542,7 +542,7 @@ export async function upsertBillingCustomer(
   if (!supabase) return null;
 
   const { data, error } = await supabase
-    .from('billing_customers')
+    .from('billing_subscriptions')
     .upsert({
       org_id: orgId,
       stripe_customer_id: stripeCustomerId,
