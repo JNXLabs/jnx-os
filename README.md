@@ -1,6 +1,8 @@
 # JNX-OS v2 - The Neural Engine For SaaS Logic
 
-**A production-ready, GDPR-compliant SaaS foundation with Clerk authentication, multi-tenant architecture, and comprehensive security features.**
+**A production-ready, GDPR-compliant SaaS foundation with Clerk authentication, Stripe billing, multi-tenant architecture, and comprehensive security features.**
+
+**Current Status:** ✅ Phase 5A Complete - SaaS Installation Flow & Stripe Billing Live
 
 ---
 
@@ -9,10 +11,22 @@
 JNX-OS is a **scalable, secure, and compliant** foundation for building modern SaaS products. It provides:
 
 - ✅ **Enterprise Authentication** - Clerk with Organizations + RBAC
+- ✅ **Stripe Billing** - Subscription management with usage tracking
 - ✅ **Multi-Tenant Architecture** - Isolated data per organization
 - ✅ **GDPR Compliance** - Data export, deletion, audit trails
 - ✅ **Security by Default** - Rate limiting, security headers, PII redaction
 - ✅ **Production Ready** - TypeScript strict mode, error handling, logging
+
+## 🆕 Latest: Qryx - AI Sales Assistant for Shopify
+
+JNX-OS now powers **Qryx**, an intelligent AI-powered sales assistant for Shopify stores:
+
+- ✅ **Complete SaaS Flow** - Install → Auth → Payment → OAuth → Dashboard
+- ✅ **Stripe Integration** - 3 pricing tiers with automatic billing
+- ✅ **Shop Session Management** - Encrypted JWT-based sessions
+- ✅ **Shopify OAuth** - Secure app installation
+- ✅ **Gemini AI** - Powered by Google's Gemini 2.0 Flash
+- ✅ **Usage Tracking** - Conversation limits per plan
 
 ---
 
@@ -46,7 +60,29 @@ CLERK_SECRET_KEY=sk_test_...
 CLERK_WEBHOOK_SECRET=whsec_...
 ```
 
-### 3. Configure Supabase
+### 3. Configure Stripe
+
+See [STRIPE_SETUP_GUIDE.md](STRIPE_SETUP_GUIDE.md) for detailed instructions.
+
+**Quick setup:**
+1. Create Stripe account
+2. Create products and pricing
+3. Copy API keys to `.env`:
+
+```bash
+STRIPE_SECRET_KEY=sk_live_...
+NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_live_...
+STRIPE_WEBHOOK_SECRET=whsec_...
+STRIPE_PRICE_STARTER=price_...
+STRIPE_PRICE_PROFESSIONAL=price_...
+STRIPE_PRICE_ENTERPRISE=price_...
+```
+
+4. Configure webhook endpoint:
+   - URL: `https://your-domain.com/api/stripe/webhook`
+   - Events: `checkout.session.completed`, `customer.subscription.*`, `invoice.*`
+
+### 4. Configure Supabase
 
 1. Create Supabase project
 2. Run database schema:
@@ -65,7 +101,21 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
 SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
 ```
 
-### 4. Start Development Server
+### 5. Add Session Secret
+
+Generate a secure session secret for shop sessions:
+
+```bash
+openssl rand -base64 32
+```
+
+Add to `.env`:
+
+```bash
+SESSION_SECRET=<generated_secret>
+```
+
+### 6. Start Development Server
 
 ```bash
 yarn dev
@@ -83,17 +133,26 @@ Visit: http://localhost:3000
 - **RBAC** - Admin and Member roles
 - **Webhooks** - Clerk → Supabase sync
 
+### Billing & Subscriptions (NEW ✨)
+- **Stripe Integration** - Checkout, webhooks, customer portal
+- **3 Pricing Tiers** - Starter ($29), Professional ($79), Business ($199)
+- **Usage Tracking** - Conversation limits per plan
+- **Subscription Management** - Auto-renewal, cancellation
+- **Webhook Automation** - Real-time billing updates
+
 ### Database & Data Management
 - **Supabase PostgreSQL** - Scalable database
 - **Type-Safe Queries** - TypeScript interfaces
 - **Audit Logging** - Track all actions
 - **Migrations** - Version-controlled schema
+- **Billing Tables** - Subscription and usage data
 
 ### Security Features
 - **Rate Limiting** - Prevent abuse
 - **Security Headers** - CSP, HSTS, XSS protection
 - **PII Redaction** - Safe logging
 - **Input Validation** - Zod schemas
+- **Session Encryption** - JWT-based shop sessions
 
 ### GDPR Compliance
 - **Data Export** - User data portability
@@ -106,6 +165,14 @@ Visit: http://localhost:3000
 - **Responsive** - Mobile-friendly
 - **Landing Page** - Marketing site
 - **Dashboards** - User + Admin interfaces
+- **Product Pages** - Qryx setup and configuration
+
+### Qryx Features (NEW ✨)
+- **Shopify Integration** - OAuth-based app installation
+- **AI Chat** - Gemini 2.0 Flash powered conversations
+- **Widget Embed** - JavaScript widget for Shopify stores
+- **Shop Management** - Multi-shop support per user
+- **Analytics** - Conversation tracking and insights
 
 ---
 
@@ -182,14 +249,29 @@ See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for details.
 - `audit_logs` - Action tracking
 - `system_events` - System logs
 
+### Billing Tables (NEW ✨)
+
+- `billing_subscriptions` - Stripe subscription data
+  - `clerk_user_id` - Owner of subscription
+  - `shop_domain` - Shopify shop
+  - `stripe_subscription_id` - Stripe sub ID
+  - `plan_id` - starter/professional/business
+  - `status` - active/canceled/past_due
+  - `current_period_start/end` - Billing cycle
+
+### Qryx Tables (NEW ✨)
+
+- `qryx_shops` - Shopify shop OAuth tokens
+- `qryx_conversations` - Chat conversations for usage tracking
+- `qryx_config` - Chatbot configuration per shop
+
 ### GDPR Tables
 
 - `data_export_requests` - Export tracking
-- `billing_customers` - Payment data
 - `entitlements` - Feature access
 - `feature_flags` - Toggles
 
-See [lib/db/schema-v2.sql](nextjs_space/lib/db/schema-v2.sql) for full schema.
+See [DATABASE_SCHEMA_REFERENCE.md](DATABASE_SCHEMA_REFERENCE.md) for complete schema documentation.
 
 ---
 
@@ -220,12 +302,26 @@ yarn build
 
 ## 📖 Documentation
 
+### Core Documentation
+
 | Document | Description |
 |----------|-------------|
 | [ARCHITECTURE.md](docs/ARCHITECTURE.md) | System architecture and data flow |
 | [BACKEND_CONTRACT.md](docs/BACKEND_CONTRACT.md) | Development rules (READ FIRST!) |
 | [CLERK_SETUP.md](docs/CLERK_SETUP.md) | Clerk authentication setup |
 | [GDPR_COMPLIANCE.md](docs/GDPR_COMPLIANCE.md) | Privacy features and compliance |
+
+### Phase 5A Documentation (NEW ✨)
+
+| Document | Description |
+|----------|-------------|
+| [STRIPE_SETUP_GUIDE.md](STRIPE_SETUP_GUIDE.md) | Complete Stripe configuration guide |
+| [TESTING_GUIDE_PHASE5A.md](TESTING_GUIDE_PHASE5A.md) | Step-by-step testing plan for SaaS flow |
+| [API_ENDPOINTS_REFERENCE.md](API_ENDPOINTS_REFERENCE.md) | All API endpoints with request/response examples |
+| [DATABASE_SCHEMA_REFERENCE.md](DATABASE_SCHEMA_REFERENCE.md) | Complete database schema documentation |
+| [TROUBLESHOOTING_GUIDE.md](TROUBLESHOOTING_GUIDE.md) | Common issues and solutions |
+| [PHASE5A_COMPLETION_SUMMARY.md](PHASE5A_COMPLETION_SUMMARY.md) | Technical summary of Phase 5A implementation |
+| [PHASE5A_QUICK_REFERENCE.md](PHASE5A_QUICK_REFERENCE.md) | One-page quick reference for Phase 5A |
 
 ---
 
@@ -251,10 +347,30 @@ NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
 SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
 
+# Stripe (NEW ✨)
+STRIPE_SECRET_KEY=sk_live_...
+NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_live_...
+STRIPE_WEBHOOK_SECRET=whsec_...
+STRIPE_PRICE_STARTER=price_...
+STRIPE_PRICE_PROFESSIONAL=price_...
+STRIPE_PRICE_ENTERPRISE=price_...
+
+# Session Management (NEW ✨)
+SESSION_SECRET=<generated_with_openssl_rand>
+
+# Shopify (for Qryx) (NEW ✨)
+SHOPIFY_API_KEY=...
+SHOPIFY_API_SECRET=...
+
+# AI (for Qryx) (NEW ✨)
+GEMINI_API_KEY=AIzaSy...
+
 # App
 NEXT_PUBLIC_APP_URL=https://your-domain.com
 NODE_ENV=production
 ```
+
+See [ENVIRONMENT_VARIABLES_STATUS.md](ENVIRONMENT_VARIABLES_STATUS.md) for complete variable documentation.
 
 ---
 
@@ -265,10 +381,13 @@ NODE_ENV=production
 | **Frontend** | Next.js 14, React 18, TypeScript |
 | **Styling** | TailwindCSS, JNX Dark Design |
 | **Auth** | Clerk (OAuth2, Organizations) |
+| **Billing** | Stripe (Subscriptions, Webhooks) ✨ |
 | **Database** | Supabase (PostgreSQL) |
+| **AI** | Google Gemini 2.0 Flash ✨ |
+| **E-commerce** | Shopify OAuth ✨ |
 | **Validation** | Zod |
 | **Logging** | Custom structured logger |
-| **Deployment** | Vercel |
+| **Deployment** | Vercel (Production: www.jnxlabs.ai) |
 
 ---
 
@@ -306,17 +425,39 @@ See [app/globals.css](nextjs_space/app/globals.css) and [tailwind.config.ts](nex
 
 ## 📝 Roadmap
 
-### Phase 3 (Future)
+### ✅ Phase 5A - Complete (December 2025)
 
-- [ ] Stripe billing integration
-- [ ] Advanced analytics
-- [ ] Multi-product support (QRYX subdomain)
+- [x] Stripe billing integration (Live Mode)
+- [x] Shop session management (JWT-based)
+- [x] Qryx SaaS installation flow
+- [x] Stripe webhook automation
+- [x] OAuth after payment
+- [x] Billing database schema
+- [x] Product selection page (3 tiers)
+- [x] Usage tracking foundation
+- [x] Complete documentation suite
+
+### 🚧 Phase 5B - In Progress (January 2026)
+
+- [ ] End-to-end flow testing
+- [ ] Billing dashboard for merchants
+- [ ] Conversation usage tracking
+- [ ] Admin subscription management
+- [ ] Usage limit enforcement
+- [ ] Upgrade/downgrade flows
+- [ ] Cancellation workflows
+
+### 🔮 Phase 6 - Future
+
+- [ ] Advanced analytics dashboard
+- [ ] Email notifications (payment failures, limits)
+- [ ] Multi-product expansion
 - [ ] Feature flags UI
 - [ ] User management UI
-- [ ] Email notifications
-- [ ] Webhook retry logic
 - [ ] Redis rate limiting
 - [ ] Sentry error tracking
+- [ ] Custom domain support
+- [ ] White-label options
 
 ---
 
@@ -355,14 +496,28 @@ See [app/globals.css](nextjs_space/app/globals.css) and [tailwind.config.ts](nex
 
 ## 🎉 What's Next?
 
-1. ✅ Complete Clerk setup → [CLERK_SETUP.md](docs/CLERK_SETUP.md)
-2. ✅ Run database migrations
-3. ✅ Create your first admin user
-4. ✅ Test all auth flows
-5. ✅ Customize Privacy Policy
-6. ✅ Deploy to production
+### For New Projects
 
-**Your SaaS foundation is ready!** 🚀
+1. ✅ Complete Clerk setup → [CLERK_SETUP.md](docs/CLERK_SETUP.md)
+2. ✅ Configure Stripe → [STRIPE_SETUP_GUIDE.md](STRIPE_SETUP_GUIDE.md)
+3. ✅ Run database migrations → [DATABASE_SCHEMA_REFERENCE.md](DATABASE_SCHEMA_REFERENCE.md)
+4. ✅ Create your first admin user
+5. ✅ Test all flows → [TESTING_GUIDE_PHASE5A.md](TESTING_GUIDE_PHASE5A.md)
+6. ✅ Customize Privacy Policy
+7. ✅ Deploy to production
+
+### For Qryx Development
+
+1. ✅ Test installation flow (Install → Auth → Payment → OAuth)
+2. ✅ Configure Shopify app in Partner Dashboard
+3. ✅ Test webhook delivery (Stripe & Clerk)
+4. ✅ Test chat functionality (Gemini AI)
+5. ✅ Monitor usage tracking
+6. ✅ Implement Phase 5B features (Billing Dashboard, Usage Enforcement)
+
+**Your production-ready SaaS platform is live!** 🚀
+
+**Production URL:** https://www.jnxlabs.ai
 
 ---
 
