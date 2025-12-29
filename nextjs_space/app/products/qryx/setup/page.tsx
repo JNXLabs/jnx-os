@@ -5,6 +5,8 @@
  * Shop saved → Login complete → HERE → Payment → OAuth
  * 
  * Displays pricing tiers and handles subscription selection
+ * 
+ * CRITICAL: Enforces shop session requirement to prevent checkout errors
  */
 
 import { redirect } from 'next/navigation';
@@ -13,6 +15,7 @@ import Link from 'next/link';
 import { ArrowLeft, Zap, TrendingUp, Building2, Sparkles } from 'lucide-react';
 import { hasValidShopSession } from '@/lib/session/shop-session';
 import { PricingCard } from './pricing-card';
+import { SessionExpiredError } from './session-expired-error';
 
 export const dynamic = 'force-dynamic';
 
@@ -87,14 +90,19 @@ export default async function QryxSetupPage() {
     redirect('/login?redirect_url=/products/qryx/setup');
   }
 
-  // Check if shop session exists
+  // CRITICAL: Check if shop session exists and is valid
   const hasShopSession = await hasValidShopSession();
+
+  // If no shop session, show error page with restart instructions
+  if (!hasShopSession) {
+    return <SessionExpiredError />;
+  }
 
   // TODO: Check if user already has a Qryx subscription
   // If they do, redirect to dashboard
   // const subscription = await getSubscription(user.id);
   // if (subscription?.status === 'active') {
-  //   redirect('/app/qryx');
+  //   redirect('/app/products/qryx');
   // }
 
   return (
@@ -128,13 +136,6 @@ export default async function QryxSetupPage() {
           <p className="mx-auto max-w-2xl text-lg text-slate-400">
             Select the plan that fits your store's needs. Upgrade or downgrade anytime.
           </p>
-          {!hasShopSession && (
-            <div className="mt-4 rounded-lg border border-amber-500/20 bg-amber-500/10 p-4">
-              <p className="text-sm text-amber-300">
-                ⚠️ No shop detected. Please start the installation from your Shopify Admin.
-              </p>
-            </div>
-          )}
         </div>
 
         {/* Pricing Cards */}
