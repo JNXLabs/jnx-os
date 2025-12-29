@@ -18,19 +18,3 @@ out
 .deploy
 .logs
 *.tsbuildinfo
-
-# Environment variables with secrets
-.env
-.env.local
-.env.*.local
-*.env
-nextjs_space/.env
-nextjs_space/.env.local
-
-# Vercel environment import files
-vercel-env-*.txt
-**/vercel-env-*.txt
-
-# IDE
-.vscode
-.idea
