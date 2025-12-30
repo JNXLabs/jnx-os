@@ -18,3 +18,13 @@ out
 .deploy
 .logs
 *.tsbuildinfo
+
+# Environment variables (CRITICAL - Never commit)
+.env
+.env.local
+.env*.local
+nextjs_space/.env
+nextjs_space/.env.local
+
+# Vercel environment exports (contain secrets)
+vercel-env-*.txt
