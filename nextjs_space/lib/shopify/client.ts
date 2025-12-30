@@ -23,6 +23,15 @@ let shopifyInstance: ReturnType<typeof shopifyApi> | null = null;
 
 function getShopify() {
   if (!SHOPIFY_API_KEY || !SHOPIFY_API_SECRET) {
+    // Return a safe default during build
+    console.warn(
+      '⚠️ Shopify API credentials not configured. '
+      + 'Set SHOPIFY_API_KEY and SHOPIFY_API_SECRET in .env'
+    );
+    // Return minimal mock during build
+    if (process.env.NODE_ENV !== 'production' && !shopifyInstance) {
+      return null;
+    }
     throw new Error(
       'Shopify API credentials not configured. '
       + 'Set SHOPIFY_API_KEY and SHOPIFY_API_SECRET in .env'
@@ -45,16 +54,27 @@ function getShopify() {
   return shopifyInstance;
 }
 
-// Export for backward compatibility
+// Check if Shopify is configured
+export function isShopifyConfigured(): boolean {
+  return !!(SHOPIFY_API_KEY && SHOPIFY_API_SECRET);
+}
+
+// Export for backward compatibility - safe lazy getters
 export const shopify = {
   get auth() {
-    return getShopify().auth;
+    const instance = getShopify();
+    if (!instance) throw new Error('Shopify not configured');
+    return instance.auth;
   },
   get clients() {
-    return getShopify().clients;
+    const instance = getShopify();
+    if (!instance) throw new Error('Shopify not configured');
+    return instance.clients;
   },
   get utils() {
-    return getShopify().utils;
+    const instance = getShopify();
+    if (!instance) throw new Error('Shopify not configured');
+    return instance.utils;
   },
 };
 
@@ -107,7 +127,8 @@ export async function getAuthorizationUrl(
   shop: string,
   state: string
 ): Promise<string> {
-  const sanitizedShop = shopify.utils.sanitizeShop(shop, true) || shop;
+  // Simple sanitization without calling shopify API at build time
+  const sanitizedShop = shop.replace(/^https?:\/\//, '').replace(/\/$/, '').toLowerCase();
   const redirectUri = `${SHOPIFY_APP_URL}/api/qryx/callback`;
   
   const authUrl = new URL(`https://${sanitizedShop}/admin/oauth/authorize`);
@@ -132,7 +153,8 @@ export async function validateOAuthCallback(
   accessToken: string;
   scope: string;
 }> {
-  const sanitizedShop = shopify.utils.sanitizeShop(shop, true) || shop;
+  // Simple sanitization without calling shopify API at build time
+  const sanitizedShop = shop.replace(/^https?:\/\//, '').replace(/\/$/, '').toLowerCase();
   
   // Exchange code for access token
   const tokenUrl = `https://${sanitizedShop}/admin/oauth/access_token`;
@@ -430,7 +452,8 @@ export async function registerWebhook(
  * Validate shop domain format
  */
 export function isValidShopDomain(shop: string): boolean {
-  const shopDomain = shopify.utils.sanitizeShop(shop, true);
+  // Simple sanitization without calling shopify API at build time
+  const shopDomain = shop.replace(/^https?:\/\//, '').replace(/\/$/, '').toLowerCase();
   return !!shopDomain && shopDomain.endsWith('.myshopify.com');
 }
 
@@ -439,13 +462,6 @@ export function isValidShopDomain(shop: string): boolean {
  */
 export function generateNonce(): string {
   return crypto.randomBytes(16).toString('hex');
-}
-
-/**
- * Check if Shopify is configured
- */
-export function isShopifyConfigured(): boolean {
-  return !!(SHOPIFY_API_KEY && SHOPIFY_API_SECRET && SHOPIFY_APP_URL);
 }
 
 // =============================================================================

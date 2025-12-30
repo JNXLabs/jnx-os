@@ -19,9 +19,14 @@ const ButtonSecondary = React.forwardRef<HTMLButtonElement, ButtonSecondaryProps
         ref={ref}
         className={cn(
           // Base classes
-          'relative inline-flex items-center justify-center rounded-lg font-medium transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-900 focus:ring-cyan-500',
+          'relative inline-flex items-center justify-center rounded-lg font-medium',
+          'transition-all duration-300 overflow-hidden group',
+          'focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-900 focus:ring-cyan-500',
           // Secondary styling
-          'bg-slate-800/50 text-white border border-slate-700 hover:bg-slate-700/50 hover:border-slate-600',
+          'bg-slate-800/50 text-white border border-slate-700',
+          'hover:bg-slate-800/80 hover:border-cyan-500/50 hover:scale-105',
+          'active:scale-95',
+          'disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100',
           // Size
           sizeClasses[size],
           // Custom classes
@@ -29,7 +34,13 @@ const ButtonSecondary = React.forwardRef<HTMLButtonElement, ButtonSecondaryProps
         )}
         {...props}
       >
-        {children}
+        {/* Subtle glow on hover */}
+        <span className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-gradient-to-r from-cyan-500/10 to-blue-500/10" />
+        
+        {/* Content */}
+        <span className="relative z-10 flex items-center justify-center gap-2">
+          {children}
+        </span>
       </button>
     );
   }
