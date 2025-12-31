@@ -25,6 +25,7 @@ export interface Subscription {
   current_period_start: string | null;
   current_period_end: string | null;
   cancel_at_period_end: boolean;
+  conversations_limit: number; // PHASE 5B: Added for usage tracking
   created_at: string;
   updated_at: string;
 }

@@ -16,6 +16,7 @@ import type { ProductContext } from '../ai/gemini';
 export interface ShopifyShop {
   id: string;
   org_id: string;
+  clerk_user_id: string | null; // PHASE 5B: Added for user-based billing
   shop_domain: string;
   shop_name: string;
   shop_email: string | null;

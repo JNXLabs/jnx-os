@@ -1,6 +1,7 @@
 import Link from 'next/link';
-import { Zap, ArrowLeft } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import { StatusBadge } from '@/components/ui/status-badge';
+import { JNXLogo } from '@/components/ui/jnx-logo';
 
 export default function ProductsPage() {
   return (
@@ -8,8 +9,12 @@ export default function ProductsPage() {
       {/* Header */}
       <header className="border-b border-slate-800/50">
         <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-2">
-            <Zap className="w-6 h-6 text-cyan-500" />
+          <Link href="/" className="flex items-center gap-3 group">
+            <JNXLogo 
+              size="md" 
+              animated={true}
+              className="transition-transform group-hover:scale-110"
+            />
             <span className="text-xl font-bold text-white">JNX-OS</span>
           </Link>
           <Link
@@ -17,7 +22,7 @@ export default function ProductsPage() {
             className="flex items-center gap-2 text-slate-400 hover:text-white transition-colors"
           >
             <ArrowLeft className="w-4 h-4" />
-            <span>Back to Home</span>
+            <span className="hidden sm:inline">Back to Home</span>
           </Link>
         </div>
       </header>
@@ -35,14 +40,17 @@ export default function ProductsPage() {
 
         {/* Products Grid */}
         <div className="max-w-2xl mx-auto">
-          <div className="group relative p-8 bg-slate-900/60 border border-slate-800/60 rounded-xl transition-all duration-300 hover:bg-slate-900/80">
+          <div className="group relative p-6 sm:p-8 bg-slate-900/60 border border-slate-800/60 rounded-xl transition-all duration-300 hover:bg-slate-900/80">
             <div className="absolute bottom-0 left-0 w-0 h-[2px] bg-gradient-to-r from-cyan-500 to-transparent group-hover:w-full transition-all duration-500" />
             
-            <div className="flex items-start gap-6">
-              <div className="w-16 h-16 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-lg flex items-center justify-center flex-shrink-0">
-                <Zap className="w-8 h-8 text-white" />
+            <div className="flex flex-col sm:flex-row items-start gap-4 sm:gap-6">
+              <div className="relative w-16 h-16 bg-slate-900/80 backdrop-blur-sm border border-cyan-500/20 rounded-lg flex items-center justify-center flex-shrink-0 group-hover:border-cyan-500/40 transition-colors">
+                <JNXLogo 
+                  size="lg" 
+                  animated={true}
+                />
               </div>
-              <div className="flex-1">
+              <div className="flex-1 w-full sm:w-auto">
                 <div className="flex items-center gap-3 mb-2">
                   <h2 className="text-2xl font-bold text-white">QRYX</h2>
                   <StatusBadge status="coming-soon">Coming Soon</StatusBadge>

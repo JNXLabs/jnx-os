@@ -95,12 +95,19 @@ export async function POST(request: NextRequest) {
     // Get shop owner's Clerk user ID
     const clerkUserId = shop.clerk_user_id;
     
+    // Skip usage tracking if clerk_user_id not set (legacy shops)
+    if (!clerkUserId) {
+      logger.warn('Shop missing clerk_user_id, skipping usage tracking', { shop_id: shop.id });
+    }
+    
     // Check if user is admin (unlimited conversations)
     const user = await currentUser();
     const isAdmin = user?.publicMetadata?.role === 'admin';
     
-    // Check conversation limit BEFORE processing
-    const limitCheck = await checkConversationLimit(clerkUserId, isAdmin);
+    // Check conversation limit BEFORE processing (only if clerk_user_id exists)
+    const limitCheck = clerkUserId 
+      ? await checkConversationLimit(clerkUserId, isAdmin)
+      : { allowed: true, used: 0, limit: 0, percentUsed: 0, isAdmin: false, warningLevel: 'none' as const };
     
     // If limit reached, return error with upgrade prompt (soft limit)
     if (!limitCheck.allowed && !isAdmin) {
@@ -154,7 +161,7 @@ export async function POST(request: NextRequest) {
       });
 
       // PHASE 5B: Track new conversation (user-based)
-      if (!isAdmin) {
+      if (!isAdmin && clerkUserId) {
         try {
           await incrementConversationCount(clerkUserId);
           logger.info('Conversation count incremented', { clerkUserId });
@@ -246,7 +253,7 @@ export async function POST(request: NextRequest) {
     // =============================================================================
     
     // Update warning flags if threshold reached
-    if (!isAdmin && limitCheck.warningLevel !== 'none') {
+    if (!isAdmin && clerkUserId && limitCheck.warningLevel !== 'none') {
       try {
         await updateWarningFlag(clerkUserId, limitCheck.warningLevel as '80' | '100');
       } catch (error) {

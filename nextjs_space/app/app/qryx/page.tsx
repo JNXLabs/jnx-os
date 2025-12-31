@@ -105,6 +105,7 @@ export default async function QryxDashboardPage() {
   const plainShop = {
     id: shop.id,
     org_id: shop.org_id,
+    clerk_user_id: shop.clerk_user_id, // PHASE 5B: Added for user-based billing
     shop_domain: shop.shop_domain,
     shop_name: shop.shop_name,
     shop_email: shop.shop_email,
