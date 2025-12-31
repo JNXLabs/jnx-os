@@ -22,6 +22,24 @@ const logger = new Logger('api/stripe/webhook');
 export const dynamic = 'force-dynamic';
 
 /**
+ * Plan conversation limits mapping
+ * Maps plan IDs to their monthly conversation limits
+ */
+const PLAN_LIMITS: Record<string, number> = {
+  'starter': 500,
+  'professional': 2000,
+  'business': 5000,
+};
+
+/**
+ * Get conversation limit for a plan
+ * Returns the limit or a default fallback
+ */
+function getPlanLimit(planId: string): number {
+  return PLAN_LIMITS[planId.toLowerCase()] || 500; // Default to Starter limit
+}
+
+/**
  * POST /api/stripe/webhook
  * 
  * Receives and processes Stripe webhook events
@@ -117,6 +135,8 @@ async function handleCheckoutCompleted(session: any) {
       return;
     }
 
+    const conversationsLimit = getPlanLimit(metadata.planId);
+
     await upsertSubscription({
       userId: metadata.userId,
       stripeCustomerId: session.customer as string,
@@ -124,12 +144,14 @@ async function handleCheckoutCompleted(session: any) {
       planId: metadata.planId,
       planName: metadata.planName || metadata.planId,
       status: 'active',
+      conversationsLimit,
     });
 
     logger.info('Checkout completed, subscription created:', {
       userId: metadata.userId,
       planId: metadata.planId,
       subscriptionId: session.subscription,
+      conversationsLimit,
     });
   } catch (error) {
     logger.error('Handle checkout completed error:', error);
@@ -140,21 +162,56 @@ async function handleCheckoutCompleted(session: any) {
 /**
  * Handle customer.subscription.updated
  * Updates subscription status, plan, or period
+ * Also detects plan changes and updates conversation limits
  */
 async function handleSubscriptionUpdated(subscription: any) {
   try {
+    // Get current subscription from DB to detect plan changes
+    const currentSub = await getSubscriptionByStripeId(subscription.id);
+    
+    // Extract plan info from Stripe subscription
+    const stripePriceId = subscription.items?.data?.[0]?.price?.id;
+    let newPlanId: string | undefined;
+    let conversationsLimit: number | undefined;
+    
+    if (stripePriceId) {
+      // Map Stripe price IDs to plan IDs
+      const priceMap: Record<string, string> = {
+        [process.env.STRIPE_PRICE_STARTER || '']: 'starter',
+        [process.env.STRIPE_PRICE_PROFESSIONAL || '']: 'professional',
+        [process.env.STRIPE_PRICE_BUSINESS || '']: 'business',
+      };
+      
+      newPlanId = priceMap[stripePriceId];
+      
+      // Check if plan changed
+      if (newPlanId && currentSub && newPlanId !== currentSub.plan_id) {
+        conversationsLimit = getPlanLimit(newPlanId);
+        logger.info('Plan change detected:', {
+          subscriptionId: subscription.id,
+          oldPlan: currentSub.plan_id,
+          newPlan: newPlanId,
+          oldLimit: currentSub.conversations_limit,
+          newLimit: conversationsLimit,
+        });
+      }
+    }
+
     await upsertSubscription({
       stripeSubscriptionId: subscription.id,
       status: subscription.status,
       currentPeriodStart: new Date(subscription.current_period_start * 1000),
       currentPeriodEnd: new Date(subscription.current_period_end * 1000),
       cancelAtPeriodEnd: subscription.cancel_at_period_end,
+      ...(newPlanId && { planId: newPlanId }),
+      ...(conversationsLimit && { conversationsLimit }),
     });
 
     logger.info('Subscription updated:', {
       subscriptionId: subscription.id,
       status: subscription.status,
       cancelAtPeriodEnd: subscription.cancel_at_period_end,
+      planChanged: !!newPlanId,
     });
   } catch (error) {
     logger.error('Handle subscription updated error:', error);

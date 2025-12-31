@@ -2,6 +2,8 @@ import type { Metadata } from 'next';
 import './globals.css';
 import { ClerkProvider } from '@clerk/nextjs';
 import { dark } from '@clerk/themes';
+import { GA4Script } from '@/components/analytics/ga4-script';
+import { PageViewTracker } from '@/components/analytics/page-view-tracker';
 
 // Register all JNX products (auto-discovery)
 import '@/lib/jnx-products';
@@ -45,7 +47,11 @@ export default function RootLayout({
         <head>
           <script src="https://apps.abacus.ai/chatllm/appllm-lib.js"></script>
         </head>
-        <body className="antialiased">{children}</body>
+        <body className="antialiased">
+          <GA4Script />
+          <PageViewTracker />
+          {children}
+        </body>
       </html>
     </ClerkProvider>
   );

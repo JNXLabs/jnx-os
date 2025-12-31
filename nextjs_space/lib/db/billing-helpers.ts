@@ -47,6 +47,7 @@ export async function upsertSubscription(data: {
   currentPeriodStart?: Date;
   currentPeriodEnd?: Date;
   cancelAtPeriodEnd?: boolean;
+  conversationsLimit?: number;
 }): Promise<Subscription> {
   const supabase = await createSupabaseServerClient();
 
@@ -69,6 +70,7 @@ export async function upsertSubscription(data: {
     if (data.currentPeriodStart) updateData.current_period_start = data.currentPeriodStart.toISOString();
     if (data.currentPeriodEnd) updateData.current_period_end = data.currentPeriodEnd.toISOString();
     if (data.cancelAtPeriodEnd !== undefined) updateData.cancel_at_period_end = data.cancelAtPeriodEnd;
+    if (data.conversationsLimit !== undefined) updateData.conversations_limit = data.conversationsLimit;
 
     // Upsert: insert if not exists, update if exists
     const { data: subscription, error } = await supabase
