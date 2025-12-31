@@ -19,6 +19,8 @@ import {
   Database,
   Flag,
   Shield,
+  Menu,
+  X,
 } from 'lucide-react';
 
 interface AdminDashboardClientProps {
@@ -51,6 +53,7 @@ interface SystemHealth {
 
 export default function AdminDashboardClient({ user, jnxUser }: AdminDashboardClientProps) {
   const [activePage, setActivePage] = useState('dashboard');
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [systemHealth, setSystemHealth] = useState<SystemHealth | null>(null);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
@@ -77,6 +80,11 @@ export default function AdminDashboardClient({ user, jnxUser }: AdminDashboardCl
     router.push('/');
   };
 
+  const handleMenuItemClick = (itemId: string) => {
+    setActivePage(itemId);
+    setIsMobileMenuOpen(false); // Close mobile menu after click
+  };
+
   const menuItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { id: 'users', label: 'Users', icon: Users },
@@ -88,8 +96,30 @@ export default function AdminDashboardClient({ user, jnxUser }: AdminDashboardCl
 
   return (
     <div className="min-h-screen bg-jnx-dark flex">
+      {/* Mobile Menu Button */}
+      <button
+        onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+        className="lg:hidden fixed top-4 left-4 z-50 p-2 bg-slate-900 border border-purple-500/30 rounded-lg text-white hover:bg-slate-800 transition-colors"
+        aria-label="Toggle menu"
+      >
+        {isMobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+      </button>
+
+      {/* Mobile Overlay */}
+      {isMobileMenuOpen && (
+        <div
+          className="lg:hidden fixed inset-0 bg-black/50 backdrop-blur-sm z-30"
+          onClick={() => setIsMobileMenuOpen(false)}
+        />
+      )}
+
       {/* Sidebar */}
-      <aside className="w-64 bg-slate-900/40 border-r border-slate-800 flex flex-col">
+      <aside className={`
+        fixed lg:static inset-y-0 left-0 z-40
+        w-64 bg-slate-900/95 lg:bg-slate-900/40 border-r border-slate-800 flex flex-col
+        transform transition-transform duration-300 ease-in-out
+        ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
+      `}>
         {/* Logo */}
         <div className="p-6 border-b border-slate-800">
           <Link href="/" className="flex items-center space-x-2 group">
@@ -110,7 +140,7 @@ export default function AdminDashboardClient({ user, jnxUser }: AdminDashboardCl
           {menuItems.map((item) => (
             <button
               key={item.id}
-              onClick={() => setActivePage(item.id)}
+              onClick={() => handleMenuItemClick(item.id)}
               className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-all ${
                 activePage === item.id
                   ? 'bg-purple-500/10 text-purple-400'
@@ -159,7 +189,7 @@ export default function AdminDashboardClient({ user, jnxUser }: AdminDashboardCl
 
       {/* Main Content */}
       <main className="flex-1 overflow-auto">
-        <div className="p-8">
+        <div className="p-4 lg:p-8 pt-20 lg:pt-8">
           {/* Header */}
           <div className="mb-8">
             <h1 className="text-3xl font-bold text-white mb-2">Admin Dashboard</h1>
