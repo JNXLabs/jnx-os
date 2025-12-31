@@ -25,10 +25,15 @@ import {
   addChatMessage,
   getChatMessages,
   getOrCreateQryxConfig,
-  incrementConversationUsage,
 } from '@/lib/db/qryx-helpers';
+import {
+  checkConversationLimit,
+  incrementConversationCount,
+  updateWarningFlag,
+} from '@/lib/db/billing-helpers';
 import { getProducts } from '@/lib/shopify/client';
 import { Logger } from '@/lib/observability/logger';
+import { currentUser } from '@clerk/nextjs/server';
 import crypto from 'crypto';
 
 const logger = new Logger('api/qryx/chat');
@@ -83,6 +88,53 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // =============================================================================
+    // PHASE 5B: CONVERSATION LIMIT ENFORCEMENT
+    // =============================================================================
+    
+    // Get shop owner's Clerk user ID
+    const clerkUserId = shop.clerk_user_id;
+    
+    // Check if user is admin (unlimited conversations)
+    const user = await currentUser();
+    const isAdmin = user?.publicMetadata?.role === 'admin';
+    
+    // Check conversation limit BEFORE processing
+    const limitCheck = await checkConversationLimit(clerkUserId, isAdmin);
+    
+    // If limit reached, return error with upgrade prompt (soft limit)
+    if (!limitCheck.allowed && !isAdmin) {
+      logger.warn('Conversation limit reached', {
+        clerkUserId,
+        used: limitCheck.used,
+        limit: limitCheck.limit,
+      });
+      
+      return NextResponse.json(
+        {
+          error: 'conversation_limit_reached',
+          message: `You've reached your monthly conversation limit (${limitCheck.used}/${limitCheck.limit}). Please upgrade your plan to continue using Qryx.`,
+          upgrade_url: 'https://www.jnxlabs.ai/app/billing',
+          usage: {
+            used: limitCheck.used,
+            limit: limitCheck.limit,
+            percentUsed: limitCheck.percentUsed,
+          },
+        },
+        { status: 429 }
+      );
+    }
+    
+    // Log warning level (for notifications)
+    if (limitCheck.warningLevel && limitCheck.warningLevel !== 'none') {
+      logger.info('Usage warning level reached', {
+        clerkUserId,
+        warningLevel: limitCheck.warningLevel,
+        used: limitCheck.used,
+        limit: limitCheck.limit,
+      });
+    }
+
     // Get or create chat session
     let session = session_token ? await getChatSession(session_token) : null;
     
@@ -101,8 +153,16 @@ export async function POST(request: NextRequest) {
         referrer: referrer || undefined,
       });
 
-      // Track new conversation
-      await incrementConversationUsage(shop.id);
+      // PHASE 5B: Track new conversation (user-based)
+      if (!isAdmin) {
+        try {
+          await incrementConversationCount(clerkUserId);
+          logger.info('Conversation count incremented', { clerkUserId });
+        } catch (error) {
+          logger.error('Failed to increment conversation count', { error, clerkUserId });
+          // Continue - don't block conversation for counting error
+        }
+      }
     }
 
     // Update customer info if provided
@@ -181,13 +241,45 @@ export async function POST(request: NextRequest) {
       tokens_used: aiResponse.tokensUsed,
     });
 
-    // Return response
-    return NextResponse.json({
+    // =============================================================================
+    // PHASE 5B: UPDATE WARNING FLAGS & INCLUDE USAGE IN RESPONSE
+    // =============================================================================
+    
+    // Update warning flags if threshold reached
+    if (!isAdmin && limitCheck.warningLevel !== 'none') {
+      try {
+        await updateWarningFlag(clerkUserId, limitCheck.warningLevel as '80' | '100');
+      } catch (error) {
+        logger.error('Failed to update warning flag', { error, clerkUserId });
+        // Continue - don't block response
+      }
+    }
+    
+    // Build response with usage data
+    const responseData: any = {
       session_token: session.session_token,
       response: aiResponse.content,
       response_time_ms: totalResponseTime,
       tokens_used: aiResponse.tokensUsed,
-    });
+    };
+    
+    // Include usage warning if applicable
+    if (!isAdmin && limitCheck.warningLevel !== 'none') {
+      responseData.usage_warning = {
+        level: limitCheck.warningLevel,
+        used: limitCheck.used,
+        limit: limitCheck.limit,
+        percent_used: limitCheck.percentUsed,
+        message:
+          limitCheck.warningLevel === '100'
+            ? `You've reached your conversation limit (${limitCheck.used}/${limitCheck.limit}). Please upgrade to continue.`
+            : `You've used ${limitCheck.percentUsed.toFixed(0)}% of your monthly conversations (${limitCheck.used}/${limitCheck.limit}).`,
+        upgrade_url: 'https://www.jnxlabs.ai/app/billing',
+      };
+    }
+
+    // Return response
+    return NextResponse.json(responseData);
   } catch (error) {
     logger.error('Chat endpoint error', { error });
     
