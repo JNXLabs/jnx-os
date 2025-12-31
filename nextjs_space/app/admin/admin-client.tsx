@@ -7,6 +7,7 @@ import { useClerk } from '@clerk/nextjs';
 import type { User } from '@clerk/nextjs/server';
 import type { JNXUser } from '@/lib/db/helpers';
 import { StatusBadge } from '@/components/ui/status-badge';
+import { JNXLogo } from '@/components/ui/jnx-logo';
 import {
   LayoutDashboard,
   Users,
@@ -91,9 +92,14 @@ export default function AdminDashboardClient({ user, jnxUser }: AdminDashboardCl
       <aside className="w-64 bg-slate-900/40 border-r border-slate-800 flex flex-col">
         {/* Logo */}
         <div className="p-6 border-b border-slate-800">
-          <Link href="/" className="flex items-center space-x-2">
-            <Shield className="w-6 h-6 text-purple-500" />
-            <span className="text-xl font-bold bg-gradient-to-r from-purple-400 to-pink-500 bg-clip-text text-transparent">
+          <Link href="/" className="flex items-center space-x-2 group">
+            <JNXLogo 
+              size="md" 
+              animated={true}
+              variant="admin"
+              className="group-hover:scale-110 transition-transform duration-300"
+            />
+            <span className="text-xl font-bold bg-gradient-to-r from-purple-400 to-pink-500 bg-clip-text text-transparent group-hover:from-purple-300 group-hover:to-pink-400 transition-all">
               Admin
             </span>
           </Link>

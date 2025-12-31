@@ -5,13 +5,13 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useClerk } from '@clerk/nextjs';
 import type { JNXUser } from '@/lib/db/helpers';
+import { JNXLogo } from '@/components/ui/jnx-logo';
 import {
   LayoutDashboard,
   Package,
   Settings,
   CreditCard,
   LogOut,
-  Zap,
   Users,
   ShieldCheck,
 } from 'lucide-react';
@@ -53,9 +53,13 @@ export default function DashboardClient({ user, jnxUser }: DashboardClientProps)
       <aside className="w-64 bg-slate-900/40 border-r border-slate-800 flex flex-col">
         {/* Logo */}
         <div className="p-6 border-b border-slate-800">
-          <Link href="/" className="flex items-center space-x-2">
-            <Zap className="w-6 h-6 text-cyan-500" />
-            <span className="text-xl font-bold bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent">
+          <Link href="/" className="flex items-center space-x-2 group">
+            <JNXLogo 
+              size="md" 
+              animated={true}
+              className="group-hover:scale-110 transition-transform duration-300"
+            />
+            <span className="text-xl font-bold bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent group-hover:from-cyan-300 group-hover:to-blue-400 transition-all">
               JNX-OS
             </span>
           </Link>

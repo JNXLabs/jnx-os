@@ -6,11 +6,11 @@ import { TerminalBox } from '@/components/ui/terminal-box';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { NeuralBackground } from '@/components/ui/neural-background';
 import { FloatingParticles } from '@/components/ui/floating-particles';
+import { JNXLogo } from '@/components/ui/jnx-logo';
 import {
   Activity,
   Brain,
   Shield,
-  Zap,
   Sparkles,
   Cpu,
   Network,
@@ -26,12 +26,16 @@ export default function Home() {
       {/* Header */}
       <header className="fixed top-0 left-0 right-0 z-50 glass border-b border-slate-800/50">
         <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-2 group cursor-pointer">
-            <Zap className="w-6 h-6 text-cyan-500 group-hover:animate-pulse transition-all" />
+          <Link href="/" className="flex items-center gap-2 group cursor-pointer">
+            <JNXLogo 
+              size="md" 
+              animated={true}
+              className="group-hover:scale-110 transition-transform duration-300 drop-shadow-[0_0_10px_rgba(6,182,212,0.5)] group-hover:drop-shadow-[0_0_15px_rgba(6,182,212,0.8)]"
+            />
             <span className="text-xl font-bold text-white group-hover:text-cyan-400 transition-colors">
               JNX-OS
             </span>
-          </div>
+          </Link>
           <nav className="hidden md:flex items-center gap-6">
             <Link
               href="/products"
@@ -211,8 +215,12 @@ export default function Home() {
               <div className="absolute bottom-0 left-0 w-0 h-[2px] bg-gradient-to-r from-cyan-500 via-blue-500 to-transparent group-hover:w-full transition-all duration-700" />
               
               <div className="relative flex items-start gap-6">
-                <div className="w-16 h-16 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-lg flex items-center justify-center flex-shrink-0 shadow-glow-primary group-hover:shadow-glow-hover transition-shadow">
-                  <Zap className="w-8 h-8 text-white group-hover:animate-pulse" />
+                <div className="w-16 h-16 bg-gradient-to-br from-cyan-500/10 to-blue-600/10 rounded-lg flex items-center justify-center flex-shrink-0 shadow-glow-primary group-hover:shadow-glow-hover transition-shadow backdrop-blur-sm border border-cyan-500/20">
+                  <JNXLogo 
+                    size="lg" 
+                    animated={true}
+                    className="group-hover:scale-110 transition-transform duration-300"
+                  />
                 </div>
                 <div className="flex-1">
                   <div className="flex items-center gap-3 mb-2">
@@ -255,7 +263,11 @@ export default function Home() {
         <div className="max-w-7xl mx-auto relative z-10">
           <div className="flex flex-col md:flex-row items-center justify-between gap-6">
             <div className="flex items-center gap-2 group">
-              <Zap className="w-5 h-5 text-cyan-500 group-hover:animate-pulse transition-all" />
+              <JNXLogo 
+                size="sm" 
+                animated={false}
+                className="opacity-70 group-hover:opacity-100 transition-opacity duration-300"
+              />
               <span className="text-sm text-slate-400 group-hover:text-slate-300 transition-colors">
                 © 2025 JNX Labs. All rights reserved.
               </span>
