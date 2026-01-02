@@ -6,12 +6,28 @@
  */
 
 import Link from 'next/link';
-import { ArrowLeft, Zap, TrendingUp, Building2, Sparkles, Check } from 'lucide-react';
+import { ArrowLeft, Zap, TrendingUp, Building2, Sparkles, Check, Gift } from 'lucide-react';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
 const PRICING_PLANS = [
+  {
+    id: 'free',
+    name: 'Free',
+    price: '$0',
+    period: '/month',
+    description: 'Try Qryx with basic features - no credit card required',
+    features: [
+      '50 conversations/month',
+      'Basic widget',
+      'Product recommendations',
+      'Community support',
+    ],
+    popular: false,
+    color: 'slate',
+    isFree: true,
+  },
   {
     id: 'starter',
     name: 'Starter',
@@ -28,6 +44,7 @@ const PRICING_PLANS = [
     ],
     popular: false,
     color: 'cyan',
+    isFree: false,
   },
   {
     id: 'professional',
@@ -46,6 +63,7 @@ const PRICING_PLANS = [
     ],
     popular: true,
     color: 'blue',
+    isFree: false,
   },
   {
     id: 'business',
@@ -64,6 +82,7 @@ const PRICING_PLANS = [
     ],
     popular: false,
     color: 'purple',
+    isFree: false,
   },
 ];
 
@@ -141,7 +160,7 @@ export default function QryxSetupPage({
         </div>
 
         {/* Pricing Cards */}
-        <div className="grid gap-8 md:grid-cols-3">
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
           {PRICING_PLANS.map((plan) => (
             <PricingCard key={plan.id} plan={plan} shop={shop} />
           ))}
@@ -163,6 +182,7 @@ export default function QryxSetupPage({
 
 function PricingCard({ plan, shop }: { plan: typeof PRICING_PLANS[0]; shop: string }) {
   const IconMap: Record<string, React.ElementType> = {
+    free: Gift,
     starter: Zap,
     professional: TrendingUp,
     business: Building2,
@@ -172,7 +192,7 @@ function PricingCard({ plan, shop }: { plan: typeof PRICING_PLANS[0]; shop: stri
   return (
     <div
       className={`
-        relative overflow-hidden rounded-2xl border bg-slate-900/40 p-8 backdrop-blur-sm transition-all
+        relative overflow-hidden rounded-2xl border bg-slate-900/40 p-6 backdrop-blur-sm transition-all
         ${
           plan.popular
             ? 'border-cyan-500/50 shadow-lg shadow-cyan-500/20 ring-2 ring-cyan-500/20'
@@ -182,56 +202,65 @@ function PricingCard({ plan, shop }: { plan: typeof PRICING_PLANS[0]; shop: stri
     >
       {/* Popular Badge */}
       {plan.popular && (
-        <div className="absolute right-4 top-4 rounded-full bg-cyan-500 px-3 py-1 text-xs font-semibold text-slate-900">
+        <div className="absolute right-3 top-3 rounded-full bg-cyan-500 px-2 py-0.5 text-xs font-semibold text-slate-900">
           POPULAR
         </div>
       )}
 
       {/* Plan Header */}
-      <div className="mb-6">
-        <div className="mb-4 inline-flex rounded-lg bg-slate-800/50 p-3">
-          <Icon className="h-6 w-6 text-cyan-500" />
+      <div className="mb-4">
+        <div className="mb-3 inline-flex rounded-lg bg-slate-800/50 p-2">
+          <Icon className={`h-5 w-5 ${plan.isFree ? 'text-green-500' : 'text-cyan-500'}`} />
         </div>
-        <h3 className="mb-2 text-2xl font-bold text-white">{plan.name}</h3>
-        <p className="text-sm text-slate-400">{plan.description}</p>
+        <h3 className="mb-1 text-xl font-bold text-white">{plan.name}</h3>
+        <p className="text-xs text-slate-400">{plan.description}</p>
       </div>
 
       {/* Pricing */}
-      <div className="mb-6">
+      <div className="mb-4">
         <div className="flex items-baseline gap-1">
-          <span className="text-4xl font-bold text-white">{plan.price}</span>
-          <span className="text-slate-400">{plan.period}</span>
+          <span className={`text-3xl font-bold ${plan.isFree ? 'text-green-400' : 'text-white'}`}>{plan.price}</span>
+          <span className="text-slate-400 text-sm">{plan.period}</span>
         </div>
       </div>
 
       {/* Features */}
-      <ul className="mb-8 space-y-3">
+      <ul className="mb-6 space-y-2">
         {plan.features.map((feature) => (
-          <li key={feature} className="flex items-start gap-3">
-            <Check className="h-5 w-5 shrink-0 text-cyan-500" />
-            <span className="text-sm text-slate-300">{feature}</span>
+          <li key={feature} className="flex items-start gap-2">
+            <Check className={`h-4 w-4 shrink-0 ${plan.isFree ? 'text-green-500' : 'text-cyan-500'}`} />
+            <span className="text-xs text-slate-300">{feature}</span>
           </li>
         ))}
       </ul>
 
       {/* CTA Button */}
-      <form action="/api/stripe/checkout" method="POST">
-        <input type="hidden" name="planId" value={plan.id} />
-        <input type="hidden" name="shop" value={shop} />
-        <button
-          type="submit"
-          className={`
-            w-full rounded-lg px-6 py-3 font-semibold transition-all
-            ${
-              plan.popular
-                ? 'bg-cyan-500 text-slate-900 hover:bg-cyan-400 shadow-lg shadow-cyan-500/25'
-                : 'bg-slate-800 text-white hover:bg-slate-700'
-            }
-          `}
+      {plan.isFree ? (
+        <a
+          href={`/api/qryx/start-oauth?shop=${encodeURIComponent(shop)}&plan=free`}
+          className="block w-full rounded-lg px-4 py-2.5 font-semibold text-center bg-green-600 text-white hover:bg-green-500 transition-all"
         >
-          Subscribe Now
-        </button>
-      </form>
+          Start Free
+        </a>
+      ) : (
+        <form action="/api/stripe/checkout" method="POST">
+          <input type="hidden" name="planId" value={plan.id} />
+          <input type="hidden" name="shop" value={shop} />
+          <button
+            type="submit"
+            className={`
+              w-full rounded-lg px-4 py-2.5 font-semibold transition-all
+              ${
+                plan.popular
+                  ? 'bg-cyan-500 text-slate-900 hover:bg-cyan-400 shadow-lg shadow-cyan-500/25'
+                  : 'bg-slate-800 text-white hover:bg-slate-700'
+              }
+            `}
+          >
+            Subscribe Now
+          </button>
+        </form>
+      )}
     </div>
   );
 }
