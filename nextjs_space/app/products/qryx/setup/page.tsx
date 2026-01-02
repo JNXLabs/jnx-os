@@ -9,12 +9,12 @@
  * CRITICAL: Enforces shop session requirement to prevent checkout errors
  */
 
-import { redirect } from 'next/navigation';
 import { currentUser } from '@clerk/nextjs/server';
 import Link from 'next/link';
 import { ArrowLeft, Zap, TrendingUp, Building2, Sparkles } from 'lucide-react';
 import { PricingCard } from './pricing-card';
 import { SessionExpiredError } from './session-expired-error';
+import { AuthRedirect } from './auth-redirect';
 
 export const dynamic = 'force-dynamic';
 
@@ -85,23 +85,20 @@ const PRICING_PLANS = [
 ];
 
 export default async function QryxSetupPage({ searchParams }: PageProps) {
-  // Check if user is authenticated
-  const user = await currentUser();
-
-  if (!user) {
-    // Redirect to login with return URL
-    const redirectUrl = searchParams.shop 
-      ? `/login?redirect_url=/products/qryx/setup?shop=${encodeURIComponent(searchParams.shop)}`
-      : '/login?redirect_url=/products/qryx/setup';
-    redirect(redirectUrl);
-  }
-
-  // CRITICAL: Check if shop parameter exists
+  // CRITICAL: Check if shop parameter exists first
   const shop = searchParams.shop;
 
   // If no shop parameter, show error page with restart instructions
   if (!shop) {
     return <SessionExpiredError />;
+  }
+
+  // Check if user is authenticated
+  const user = await currentUser();
+
+  if (!user) {
+    // Use client-side redirect component
+    return <AuthRedirect shop={shop} />;
   }
 
   // TODO: Check if user already has a Qryx subscription
