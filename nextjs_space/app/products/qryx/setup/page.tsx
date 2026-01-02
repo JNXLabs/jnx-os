@@ -13,11 +13,14 @@ import { redirect } from 'next/navigation';
 import { currentUser } from '@clerk/nextjs/server';
 import Link from 'next/link';
 import { ArrowLeft, Zap, TrendingUp, Building2, Sparkles } from 'lucide-react';
-import { hasValidShopSession } from '@/lib/session/shop-session';
 import { PricingCard } from './pricing-card';
 import { SessionExpiredError } from './session-expired-error';
 
 export const dynamic = 'force-dynamic';
+
+interface PageProps {
+  searchParams: { shop?: string };
+}
 
 /**
  * Pricing plan definitions
@@ -81,20 +84,23 @@ const PRICING_PLANS = [
   },
 ];
 
-export default async function QryxSetupPage() {
+export default async function QryxSetupPage({ searchParams }: PageProps) {
   // Check if user is authenticated
   const user = await currentUser();
 
   if (!user) {
     // Redirect to login with return URL
-    redirect('/login?redirect_url=/products/qryx/setup');
+    const redirectUrl = searchParams.shop 
+      ? `/login?redirect_url=/products/qryx/setup?shop=${encodeURIComponent(searchParams.shop)}`
+      : '/login?redirect_url=/products/qryx/setup';
+    redirect(redirectUrl);
   }
 
-  // CRITICAL: Check if shop session exists and is valid
-  const hasShopSession = await hasValidShopSession();
+  // CRITICAL: Check if shop parameter exists
+  const shop = searchParams.shop;
 
-  // If no shop session, show error page with restart instructions
-  if (!hasShopSession) {
+  // If no shop parameter, show error page with restart instructions
+  if (!shop) {
     return <SessionExpiredError />;
   }
 
@@ -141,7 +147,7 @@ export default async function QryxSetupPage() {
         {/* Pricing Cards */}
         <div className="grid gap-8 md:grid-cols-3">
           {PRICING_PLANS.map((plan) => (
-            <PricingCard key={plan.id} plan={plan} hasShopSession={hasShopSession} />
+            <PricingCard key={plan.id} plan={plan} shop={shop} />
           ))}
         </div>
 

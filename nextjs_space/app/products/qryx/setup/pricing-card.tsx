@@ -23,10 +23,10 @@ interface PricingPlan {
 
 interface PricingCardProps {
   plan: PricingPlan;
-  hasShopSession: boolean;
+  shop: string;
 }
 
-export function PricingCard({ plan, hasShopSession }: PricingCardProps) {
+export function PricingCard({ plan, shop }: PricingCardProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -37,13 +37,13 @@ export function PricingCard({ plan, hasShopSession }: PricingCardProps) {
       setLoading(true);
       setError(null);
 
-      // Call checkout API
+      // Call checkout API with shop parameter
       const response = await fetch('/api/stripe/checkout', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ planId: plan.id }),
+        body: JSON.stringify({ planId: plan.id, shop }),
       });
 
       const data = await response.json();
@@ -130,7 +130,7 @@ export function PricingCard({ plan, hasShopSession }: PricingCardProps) {
           size="lg"
           glow={plan.popular}
           onClick={handleSubscribe}
-          disabled={!hasShopSession || loading}
+          disabled={!shop || loading}
         >
           {loading ? (
             <>
