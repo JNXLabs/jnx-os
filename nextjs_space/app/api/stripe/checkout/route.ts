@@ -10,7 +10,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { currentUser } from '@clerk/nextjs/server';
 import { stripe, getPricingPlan } from '@/lib/stripe/client';
-import { hasValidShopSession } from '@/lib/session/shop-session';
 
 export const dynamic = 'force-dynamic';
 
@@ -18,36 +17,40 @@ export const dynamic = 'force-dynamic';
  * POST /api/stripe/checkout
  * 
  * Creates Stripe Checkout session for selected plan
- * Body: { planId: 'starter' | 'professional' | 'business' }
+ * Body: { planId: 'starter' | 'professional' | 'business', shop: 'xxx.myshopify.com' }
  */
 export async function POST(request: NextRequest) {
   try {
-    // 1. Authenticate user
-    const user = await currentUser();
+    // 1. Parse body first to get shop
+    const contentType = request.headers.get('content-type') || '';
+    let planId: string | undefined;
+    let shop: string | undefined;
 
-    if (!user) {
-      return NextResponse.json(
-        { error: 'Unauthorized. Please login first.' },
-        { status: 401 }
-      );
+    if (contentType.includes('application/x-www-form-urlencoded')) {
+      // Form submission
+      const formData = await request.formData();
+      planId = formData.get('planId') as string;
+      shop = formData.get('shop') as string;
+    } else {
+      // JSON submission
+      const body = await request.json();
+      planId = body.planId;
+      shop = body.shop;
     }
 
-    // 2. Verify shop session exists
-    const hasShop = await hasValidShopSession();
-
-    if (!hasShop) {
+    // 2. Validate shop parameter
+    if (!shop) {
       return NextResponse.json(
         {
-          error: 'Shop session expired.',
+          error: 'Shop parameter missing.',
           message: 'Please restart the installation from your Shopify Admin.',
         },
         { status: 400 }
       );
     }
 
-    // 3. Parse and validate plan ID
-    const body = await request.json();
-    const { planId } = body;
+    // 3. Authenticate user (optional for now - can subscribe without login)
+    const user = await currentUser();
 
     if (!planId) {
       return NextResponse.json(
@@ -76,7 +79,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 5. Get user email
+    // 5. Get user email (require login for paid plans)
+    if (!user) {
+      return NextResponse.json(
+        { error: 'Please login first to subscribe.' },
+        { status: 401 }
+      );
+    }
+
     const email = user.emailAddresses[0]?.emailAddress;
 
     if (!email) {
@@ -101,28 +111,31 @@ export async function POST(request: NextRequest) {
         },
       ],
       metadata: {
-        userId: user.id,
+        userId: user?.id || 'anonymous',
         userEmail: email,
         planId: plan.id,
         planName: plan.name,
         productType: 'qryx',
+        shop: shop,
       },
       subscription_data: {
         metadata: {
-          userId: user.id,
+          userId: user?.id || 'anonymous',
           planId: plan.id,
           productType: 'qryx',
+          shop: shop,
         },
       },
-      success_url: `${baseUrl}/api/qryx/start-oauth?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${baseUrl}/products/qryx/setup?canceled=true`,
+      success_url: `${baseUrl}/api/qryx/start-oauth?session_id={CHECKOUT_SESSION_ID}&shop=${encodeURIComponent(shop)}`,
+      cancel_url: `${baseUrl}/products/qryx/setup?shop=${encodeURIComponent(shop)}&canceled=true`,
       allow_promotion_codes: true,
     });
 
     console.log('[Stripe Checkout] Session created:', {
       sessionId: session.id,
-      userId: user.id,
+      userId: user?.id || 'anonymous',
       planId: plan.id,
+      shop,
       email,
     });
 
