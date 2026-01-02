@@ -110,6 +110,7 @@ export interface QryxConfig {
  */
 export async function upsertShopifyShop(data: {
   org_id: string;
+  clerk_user_id?: string; // PHASE 5B: Added for user-based billing
   shop_domain: string;
   shop_name: string;
   shop_email?: string;
@@ -135,6 +136,7 @@ export async function upsertShopifyShop(data: {
     .upsert(
       {
         org_id: data.org_id,
+        clerk_user_id: data.clerk_user_id || null, // PHASE 5B: For user-based billing
         shop_domain: data.shop_domain,
         shop_name: data.shop_name,
         shop_email: data.shop_email || null,
