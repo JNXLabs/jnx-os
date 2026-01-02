@@ -1,284 +1,291 @@
-# 📚 Updated Documentation for New Conversation
+# Updated Documentation for New Conversation
 
-**Created:** December 31, 2025, 10:35 UTC  
+**Created:** January 2, 2026, 15:45 UTC
 **Purpose:** Comprehensive reference for continuing JNX-OS development
+**Status:** ACTIVE DEBUGGING SESSION
 
 ---
 
-## ✅ Updated Documents
+## 🚨 CURRENT STATUS: Active Debugging
 
-### 1. ⭐ **JNX_OS_MASTER_DOCUMENTATION_V2** (NEW)
-**File:** `JNX_OS_MASTER_DOCUMENTATION_V2.md` / `.pdf` (953 lines)
+### Issue Being Debugged
+**Route:** `/api/qryx/install?shop=shopbotv3.myshopify.com`
+**Error:** "Application error: a server-side exception has occurred"
+**Digest:** 4057891335
 
-**Consolidated Master Reference** containing:
-- Complete project overview
-- All 9 database tables with schema
-- All 13 API endpoints
-- Stripe integration (3 pricing tiers)
-- Logo design system (NEW)
-- Testing guide (24 tests)
-- File structure (complete tree)
-- Deployment status
-- Phase roadmap
-- Success metrics
+### Fixes Already Applied
 
-**Use this as your PRIMARY reference!**
+1. **Commit `76f2a19`:** OAuth Callback for SaaS Flow
+   - Callback now uses `currentUser()` instead of creating new users
+   - Links shop to EXISTING user/org
+   - Added `clerk_user_id` to `upsertShopifyShop()`
 
----
+2. **Commit `e77c40b`:** Async Cookies API
+   - Fixed `cookies()` to be async for Next.js 14.2+
+   - Updated `setShopSession()`, `getShopSession()`, `clearShopSession()`
 
-### 2. 💳 **Stripe Setup Guide V2**
-**File:** `STRIPE_SETUP_GUIDE_V2.md` / `.pdf`
+3. **Commit `d68489d`:** Debug Logging
+   - Added extensive logging to `/api/qryx/install`
+   - Removed external dependency (inline `isValidShop`)
+   - Non-blocking error handling for session and auth
 
-**Updated with:**
-- Logo integration notes
-- Complete webhook configuration
-- Subscription lifecycle
-- Test cards
-- Security best practices
-- Monitoring setup
-
-**Key Info:**
-- 3 Plans: $29/$79/$199
-- 5 Webhook events
-- Live mode active
-- Production URL: `https://www.jnxlabs.ai/api/stripe/webhook`
+### Next Steps
+1. Wait for Vercel deployment (~2 min)
+2. Test: `https://www.jnxlabs.ai/api/qryx/install?shop=shopbotv3.myshopify.com`
+3. If still failing, check Vercel Function Logs
+4. Look for `[Qryx Install]` log entries
 
 ---
 
-### 3. 🎨 **Logo Design Documentation**
-**File:** `LOGO_DESIGN_DOCUMENTATION.md`
+## ✅ What's Working
 
-**Complete Logo System:**
-- SVG component architecture
-- 2 color variants (default/admin)
-- Framer Motion animations
-- Integration examples
-- Performance analysis
-- Props interface
+### Phase 5A++ (Complete)
+- ✅ Stripe Live Mode billing (3 tiers: $29/$79/$199)
+- ✅ Stripe webhook handler (5 events)
+- ✅ Native SVG Logo component
+- ✅ User/Admin dashboards with mobile responsiveness
+- ✅ Clerk authentication
+- ✅ Supabase database (9 tables)
 
-**Component:** `components/ui/jnx-logo.tsx`
+### Phase 5B (Complete)
+- ✅ Billing Dashboard UI (`/app/billing`)
+- ✅ Usage tracking endpoints
+- ✅ Plan management APIs
 
----
-
-### 4. 🗄️ **Database Schema Reference**
-**Included in Master Doc**
-
-**9 Tables:**
-1. `orgs` - Organizations
-2. `users` - User accounts
-3. `billing_subscriptions` - Stripe subscriptions
-4. `qryx_shops` - Shopify stores
-5. `qryx_conversations` - Chat history
-6. `qryx_messages` - Messages
-7. `audit_logs` - Audit trail
-8. `system_events` - System events
-9. `data_export_requests` - GDPR exports
-
-**23 Indexes** + **6 Foreign Keys**
+### Phase 5C (DB Complete, Testing Flow)
+- ✅ Shop Intelligence database migration
+- ✅ `shop_intelligence` JSONB column added
+- ✅ `analyzed_at` timestamp column added
+- ✅ GIN index for JSONB queries
+- ⚠️ OAuth flow testing in progress
 
 ---
 
-### 5. 🔌 **API Endpoints Reference**
-**Included in Master Doc**
+## 🔧 Key Files Modified (Jan 2, 2026)
 
-**13 Endpoints Documented:**
-- User dashboard (4 endpoints)
-- Qryx API (7 endpoints)
-- Stripe API (2 endpoints)
-- System API (2 endpoints)
+### `/app/api/qryx/callback/route.ts`
+**Change:** Complete rewrite for SaaS flow
+```typescript
+// Now uses:
+import { currentUser } from '@clerk/nextjs/server';
+import { getUserByClerkId } from '@/lib/db/helpers';
 
-All endpoints include:
-- HTTP method
-- Auth requirements
-- Request/response format
-- Error handling
-
----
-
-### 6. 🧪 **Testing Guide Phase 5A**
-**Included in Master Doc**
-
-**24 Tests across 5 scenarios:**
-1. New user flow (6 tests)
-2. Existing user flow (4 tests)
-3. Session expiry (4 tests)
-4. Payment failure (5 tests)
-5. Webhook retry (5 tests)
-
-**Test Framework:** Playwright  
-**Coverage:** 54% automated, 46% manual
-
----
-
-## 📊 What's New Since Last Conversation?
-
-### Logo System (Phase 5A++)
-✅ **NEW Component:** `components/ui/jnx-logo.tsx`
-- Native SVG (not PNG import)
-- 2 variants: default (cyan) | admin (purple)
-- Animated with Framer Motion
-- 3 sizes: sm/md/lg
-- 0 KB file size (inline)
-
-### Integration Points
-✅ Homepage header/footer
-✅ QRYX product card
-✅ User dashboard sidebar
-✅ Admin dashboard sidebar
-
-### Git Status
-✅ Commit: `4015b5f`
-✅ Pushed to GitHub
-✅ Deployed to Production
-✅ Checkpoint saved
-
----
-
-## 🚀 Current Deployment Status
-
-### Production
-- **URL:** https://www.jnxlabs.ai
-- **Status:** ✅ Live
-- **Last Deploy:** Dec 31, 2025, 10:20 UTC
-- **Build:** ✅ Successful (0 errors)
-
-### Environment
-- **Clerk:** Live Mode
-- **Supabase:** Production
-- **Stripe:** Live Mode
-- **Shopify:** App Credentials Active
-
-### Performance
-- **Build Time:** < 90s
-- **Bundle Size:** 87.3 KB (shared)
-- **Dashboard Load:** < 3s
-- **Uptime:** 99.9%+
-
----
-
-## 📁 File Locations
-
-### Documentation
-```
-/home/ubuntu/jnx-os/
-├── JNX_OS_MASTER_DOCUMENTATION_V2.md     ⭐ START HERE
-├── JNX_OS_MASTER_DOCUMENTATION_V2.pdf    ⭐ PDF VERSION
-│
-├── STRIPE_SETUP_GUIDE_V2.md              💳 Stripe details
-├── STRIPE_SETUP_GUIDE_V2.pdf
-│
-├── LOGO_DESIGN_DOCUMENTATION.md          🎨 Logo system
-│
-├── STRIPE_SETUP_GUIDE.md                 (Old version)
-├── DATABASE_SCHEMA_REFERENCE.md          (Now in Master Doc)
-├── API_ENDPOINTS_REFERENCE.md            (Now in Master Doc)
-├── TESTING_GUIDE_PHASE5A.md              (Now in Master Doc)
-│
-└── UPDATED_DOCS_FOR_NEW_CONVERSATION.md  📋 This file
+// Instead of creating new users, it:
+const clerkUser = await currentUser();
+const jnxUser = await getUserByClerkId(clerkUser.id);
+await upsertShopifyShop({
+  org_id: jnxUser.org_id,
+  clerk_user_id: clerkUser.id,
+  // ... shop data
+});
 ```
 
-### Project Code
+### `/app/api/qryx/install/route.ts`
+**Change:** Debug version with extensive logging
+```typescript
+export async function GET(request: NextRequest) {
+  console.log('[Qryx Install] === START ===');
+  
+  // Non-blocking session save
+  try {
+    await setShopSession(shop);
+  } catch (sessionError) {
+    console.error('[Qryx Install] Session save error:', sessionError);
+    // Continue anyway
+  }
+  
+  // Non-blocking auth check
+  let user = null;
+  try {
+    user = await currentUser();
+  } catch (authError) {
+    console.error('[Qryx Install] Auth check error:', authError);
+  }
+  
+  // Redirect based on auth status
+  const baseUrl = 'https://www.jnxlabs.ai';
+  if (user) {
+    return NextResponse.redirect(`${baseUrl}/products/qryx/setup`);
+  } else {
+    return NextResponse.redirect(`${baseUrl}/login?redirect_url=/products/qryx/setup`);
+  }
+}
 ```
-/home/ubuntu/jnx-os/nextjs_space/
-├── components/ui/jnx-logo.tsx            ✨ NEW: Logo component
-├── app/page.tsx                          (Updated with logo)
-├── app/app/dashboard-client.tsx          (Updated with logo)
-├── app/admin/admin-client.tsx            (Updated with logo)
-└── .env                                  (All env vars configured)
+
+### `/lib/session/shop-session.ts`
+**Change:** Async cookies() for Next.js 14.2+
+```typescript
+// Before:
+cookies().set(COOKIE_NAME, token, {...});
+
+// After:
+const cookieStore = await cookies();
+cookieStore.set(COOKIE_NAME, token, {...});
+```
+
+### `/lib/db/qryx-helpers.ts`
+**Change:** Added `clerk_user_id` parameter
+```typescript
+export async function upsertShopifyShop(data: {
+  org_id: string;
+  clerk_user_id?: string;  // NEW: For user-based billing
+  shop_domain: string;
+  // ...
+})
 ```
 
 ---
 
-## 🎯 For the New Conversation
+## 📋 Correct SaaS Installation Flow
 
-### Quick Start Commands
+### USE THIS URL:
+```
+https://www.jnxlabs.ai/api/qryx/install?shop=shopbotv3.myshopify.com
+```
+
+### DO NOT USE:
+```
+https://shopbotv3.myshopify.com/admin/oauth/authorize?...
+```
+
+### Expected Flow:
+```
+1. /api/qryx/install?shop=xxx
+   ├── Save shop to session
+   ├── Check auth status
+   └── Redirect to login OR setup
+
+2. /login (if not authenticated)
+   └── Clerk login
+
+3. /products/qryx/setup
+   └── Select plan (Starter/Professional/Business)
+
+4. Stripe Checkout
+   └── Payment
+
+5. /api/qryx/start-oauth
+   └── Trigger Shopify OAuth
+
+6. Shopify OAuth Screen
+   └── Approve permissions
+
+7. /api/qryx/callback
+   ├── Get authenticated user (currentUser)
+   ├── Get JNX user (getUserByClerkId)
+   ├── Link shop to existing org (upsertShopifyShop)
+   └── Save shop session
+
+8. /app/qryx (Dashboard)
+```
+
+---
+
+## 🔑 Environment Variables
+
+### Vercel (Production) - VERIFIED
+```
+SHOPIFY_APP_URL=https://www.jnxlabs.ai  ✅
+SHOPIFY_API_KEY=6e62aef5f8013048ca5b446fa86c6fae  ✅
+SHOPIFY_API_SECRET=shpss_xxxxx  ✅
+SHOPIFY_SCOPES=read_products,read_product_listings,read_customers,read_orders  ✅
+```
+
+### Shopify Partners - NEEDS VERIFICATION
+```
+Allowed redirection URL(s):
+https://www.jnxlabs.ai/api/qryx/callback  ← Must be set!
+```
+
+---
+
+## 📁 Key File Locations
+
+| File | Purpose |
+|------|--------|
+| `/app/api/qryx/install/route.ts` | Entry point for installation |
+| `/app/api/qryx/callback/route.ts` | OAuth callback (SaaS flow) |
+| `/app/api/qryx/start-oauth/route.ts` | Triggers Shopify OAuth |
+| `/lib/session/shop-session.ts` | JWT session management |
+| `/lib/db/qryx-helpers.ts` | Shop database operations |
+| `/lib/shopify/client.ts` | Shopify API client |
+| `/products/qryx/setup/page.tsx` | Plan selection page |
+
+---
+
+## 🧪 Testing Commands
+
 ```bash
 # Navigate to project
 cd /home/ubuntu/jnx-os/nextjs_space
 
-# Install dependencies (if needed)
-yarn install
+# Build and check for errors
+yarn build
 
 # Start dev server
 yarn dev
 
-# Build for production
-yarn build
-
-# Run tests
+# Run Playwright tests
 yarn playwright test
+
+# Check git status
+git log --oneline -5
+
+# Push to GitHub (triggers Vercel deploy)
+git push origin main
 ```
-
-### Key Context to Share
-1. **Project Status:** Phase 5A++ complete (Logo integration done)
-2. **Last Commit:** `4015b5f` (Logo SVG component)
-3. **Production:** Live at www.jnxlabs.ai
-4. **Next Phase:** Phase 5B (Billing Dashboard)
-
-### Important Notes
-- Logo is now SVG component (not PNG)
-- All webhooks are idempotent
-- Session management uses JWT (30min TTL)
-- Database has 9 tables, fully indexed
-- Testing suite: 24 tests (54% automated)
-- Documentation: 25+ files, all up-to-date
 
 ---
 
-## ⚡ Priority References
+## 📊 Git Commits (Recent)
 
-### For Development
-1. `JNX_OS_MASTER_DOCUMENTATION_V2.md` - Complete reference
-2. `components/ui/jnx-logo.tsx` - Logo implementation
-3. `lib/db/helpers.ts` - Database operations
-4. `lib/stripe/client.ts` - Stripe integration
-
-### For Deployment
-1. `VERCEL_DEPLOYMENT_CHECKLIST.md` - Deploy guide
-2. `STRIPE_SETUP_GUIDE_V2.md` - Stripe config
-3. `.env` - Environment variables
-
-### For Testing
-1. `tests/e2e/` - Playwright tests
-2. `TESTING_GUIDE_PHASE5A.md` - Test guide
-3. `playwright.config.ts` - Test config
+```
+d68489d - Debug: Add extensive logging to /api/qryx/install
+e77c40b - Fix: Async cookies() in shop-session for Next.js 14.2+
+76f2a19 - Fix: SaaS-Flow OAuth Callback for existing users
+b8f47bd - Fix: Smart redirect for authenticated users in Qryx install flow
+05b6e5b - Phase 5C: Shop Intelligence database migration
+```
 
 ---
 
 ## 🔗 External Resources
 
 ### Dashboards
-- Clerk: https://dashboard.clerk.com
-- Supabase: https://supabase.com/dashboard
-- Stripe: https://dashboard.stripe.com
-- Vercel: https://vercel.com/jnxlabs
+- **Clerk:** https://dashboard.clerk.com
+- **Supabase:** https://supabase.com/dashboard
+- **Stripe:** https://dashboard.stripe.com
+- **Vercel:** https://vercel.com/jnxlabs/jnx-os
+- **Shopify Partners:** https://partners.shopify.com
 
 ### Production
-- Website: https://www.jnxlabs.ai
-- Test Store: shopbotv3.myshopify.com
-- GitHub: https://github.com/JNXLabs/jnx-os
+- **Website:** https://www.jnxlabs.ai
+- **Test Store:** shopbotv3.myshopify.com
+- **GitHub:** https://github.com/JNXLabs/jnx-os
 
 ---
 
-## ✅ Checklist for New Agent
+## ✅ Checklist for Debugging
 
-- [ ] Read `JNX_OS_MASTER_DOCUMENTATION_V2.md`
-- [ ] Understand logo system (`components/ui/jnx-logo.tsx`)
-- [ ] Review database schema (9 tables)
-- [ ] Check deployment status (Vercel)
-- [ ] Verify all env vars configured
-- [ ] Review Phase 5B requirements
-- [ ] Check git status (`git log --oneline -5`)
+- [x] OAuth callback rewritten for SaaS flow
+- [x] Async cookies() for Next.js 14.2+
+- [x] Debug logging added to install route
+- [x] clerk_user_id added to shop upsert
+- [x] Code pushed to GitHub
+- [ ] Vercel deployment verified
+- [ ] Test install URL working
+- [ ] Check Vercel Function Logs for errors
+- [ ] Verify Shopify Partners redirect URL
 
 ---
 
 ## 📞 Support
 
-**Issues:** GitHub at https://github.com/JNXLabs/jnx-os  
-**Email:** support@jnxlabs.ai
+- **GitHub Issues:** https://github.com/JNXLabs/jnx-os
+- **Email:** support@jnxlabs.ai
 
 ---
 
-**Document Version:** 1.0  
-**Last Updated:** December 31, 2025, 10:35 UTC  
-**Status:** ✅ Ready for New Conversation
+**Document Version:** 2.2
+**Last Updated:** January 2, 2026, 15:45 UTC
+**Status:** Active Debugging Session
