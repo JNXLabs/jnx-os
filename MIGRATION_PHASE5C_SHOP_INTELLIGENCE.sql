@@ -52,7 +52,10 @@ END $$;
 CREATE INDEX IF NOT EXISTS idx_qryx_config_shop_intelligence 
 ON qryx_config USING GIN (shop_intelligence);
 
-RAISE NOTICE '✅ Created GIN index on shop_intelligence';
+-- Success notification for index creation
+DO $$ BEGIN
+  RAISE NOTICE '✅ Created GIN index on shop_intelligence';
+END $$;
 
 -- ============================================================================
 -- VERIFICATION
