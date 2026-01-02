@@ -54,7 +54,8 @@ export async function setShopSession(shop: string): Promise<void> {
       .sign(getSecretKey());
 
     // Store in HTTP-only cookie
-    cookies().set(COOKIE_NAME, token, {
+    const cookieStore = await cookies();
+    cookieStore.set(COOKIE_NAME, token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
@@ -82,7 +83,8 @@ export async function setShopSession(shop: string): Promise<void> {
  */
 export async function getShopSession(): Promise<string | null> {
   try {
-    const token = cookies().get(COOKIE_NAME)?.value;
+    const cookieStore = await cookies();
+    const token = cookieStore.get(COOKIE_NAME)?.value;
 
     if (!token) {
       console.log('[ShopSession] No session cookie found');
@@ -121,7 +123,8 @@ export async function getShopSession(): Promise<string | null> {
  */
 export async function clearShopSession(): Promise<void> {
   try {
-    cookies().delete(COOKIE_NAME);
+    const cookieStore = await cookies();
+    cookieStore.delete(COOKIE_NAME);
     console.log('[ShopSession] Cleared');
   } catch (error) {
     console.error('[ShopSession] Error clearing session:', error);
