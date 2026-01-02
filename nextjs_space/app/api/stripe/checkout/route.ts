@@ -139,7 +139,11 @@ export async function POST(request: NextRequest) {
       email,
     });
 
-    // 8. Return checkout URL to client
+    // 8. Redirect to Stripe Checkout
+    if (session.url) {
+      return NextResponse.redirect(session.url);
+    }
+
     return NextResponse.json({
       url: session.url,
       sessionId: session.id,
