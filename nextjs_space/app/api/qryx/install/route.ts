@@ -17,10 +17,16 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { currentUser } from '@clerk/nextjs/server';
-import { isValidShopDomain } from '@/lib/shopify/client';
 import { setShopSession } from '@/lib/session/shop-session';
 
 export const dynamic = 'force-dynamic';
+
+// Simple shop domain validation (no external dependencies)
+function isValidShop(shop: string): boolean {
+  if (!shop) return false;
+  const cleaned = shop.replace(/^https?:\/\//, '').replace(/\/$/, '').toLowerCase();
+  return cleaned.endsWith('.myshopify.com');
+}
 
 /**
  * GET /api/qryx/install?shop=example.myshopify.com
@@ -28,12 +34,17 @@ export const dynamic = 'force-dynamic';
  * Validates shop domain, saves to session, redirects to login OR setup
  */
 export async function GET(request: NextRequest) {
+  console.log('[Qryx Install] === START ===');
+  
   try {
     const searchParams = request.nextUrl.searchParams;
     const shop = searchParams.get('shop');
+    
+    console.log('[Qryx Install] Shop param:', shop);
 
     // Validate shop parameter
     if (!shop) {
+      console.log('[Qryx Install] ERROR: Missing shop parameter');
       return NextResponse.json(
         { error: 'Missing shop parameter. Expected: ?shop=yourstore.myshopify.com' },
         { status: 400 }
@@ -41,45 +52,57 @@ export async function GET(request: NextRequest) {
     }
 
     // Validate shop domain format
-    if (!isValidShopDomain(shop)) {
+    if (!isValidShop(shop)) {
+      console.log('[Qryx Install] ERROR: Invalid shop domain:', shop);
       return NextResponse.json(
         { error: 'Invalid shop domain. Must be *.myshopify.com' },
         { status: 400 }
       );
     }
 
-    // Save shop parameter in encrypted session (30 min expiry)
-    await setShopSession(shop);
+    console.log('[Qryx Install] Shop domain valid, saving to session...');
 
-    console.log('[Qryx Install] Shop saved to session:', { shop });
+    // Save shop parameter in encrypted session (30 min expiry)
+    try {
+      await setShopSession(shop);
+      console.log('[Qryx Install] Shop saved to session successfully');
+    } catch (sessionError) {
+      console.error('[Qryx Install] Session save error:', sessionError);
+      // Continue anyway - session is nice-to-have for UX
+    }
 
     // CRITICAL: Check if user is already authenticated
-    const user = await currentUser();
+    console.log('[Qryx Install] Checking authentication...');
+    
+    let user = null;
+    try {
+      user = await currentUser();
+      console.log('[Qryx Install] Auth check result:', user ? `User ${user.id}` : 'Not authenticated');
+    } catch (authError) {
+      console.error('[Qryx Install] Auth check error:', authError);
+      // Continue with unauthenticated flow
+    }
+
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://www.jnxlabs.ai';
 
     if (user) {
       // User is already logged in → Skip login, go directly to setup
-      console.log('[Qryx Install] User already authenticated, redirecting to setup:', {
-        userId: user.id,
-        email: user.emailAddresses[0]?.emailAddress,
-      });
-
-      const setupUrl = new URL('/products/qryx/setup', request.url);
+      console.log('[Qryx Install] User authenticated, redirecting to setup');
+      const setupUrl = `${baseUrl}/products/qryx/setup`;
       return NextResponse.redirect(setupUrl);
     } else {
       // User is NOT logged in → Redirect to login with return URL
       console.log('[Qryx Install] User not authenticated, redirecting to login');
-
-      const loginUrl = new URL('/login', request.url);
-      loginUrl.searchParams.set('redirect_url', '/products/qryx/setup');
-
+      const loginUrl = `${baseUrl}/login?redirect_url=/products/qryx/setup`;
       return NextResponse.redirect(loginUrl);
     }
   } catch (error) {
-    console.error('[Qryx Install] Error:', error);
+    console.error('[Qryx Install] FATAL ERROR:', error);
     return NextResponse.json(
       {
         error: 'Failed to initiate installation',
         message: error instanceof Error ? error.message : 'Unknown error',
+        stack: error instanceof Error ? error.stack : undefined,
       },
       { status: 500 }
     );
