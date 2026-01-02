@@ -597,6 +597,82 @@ function getConversationsForPlan(plan_tier: string): number {
 }
 
 // =============================================================================
+// SHOP INTELLIGENCE FUNCTIONS
+// =============================================================================
+
+/**
+ * Save shop intelligence analysis to database
+ * 
+ * @param shop_id - Shopify shop ID
+ * @param intelligence - Shop intelligence object
+ */
+export async function saveShopIntelligence(
+  shop_id: string,
+  intelligence: any
+): Promise<void> {
+  const supabase = await createSupabaseServerClient();
+  
+  if (!supabase) {
+    throw new Error('Failed to create Supabase client');
+  }
+
+  const { error } = await supabase
+    .from('qryx_config')
+    .update({
+      shop_intelligence: intelligence,
+      analyzed_at: new Date().toISOString(),
+    })
+    .eq('shop_id', shop_id);
+
+  if (error) {
+    console.error('[saveShopIntelligence] Error:', error);
+    throw new Error('Failed to save shop intelligence');
+  }
+
+  console.log('[saveShopIntelligence] Saved intelligence for shop:', shop_id);
+}
+
+/**
+ * Get cached shop intelligence
+ * Returns null if not yet analyzed or stale (> 7 days)
+ * 
+ * @param shop_id - Shopify shop ID
+ */
+export async function getShopIntelligence(
+  shop_id: string
+): Promise<any | null> {
+  const supabase = await createSupabaseServerClient();
+  
+  if (!supabase) {
+    console.error('[getShopIntelligence] Failed to create Supabase client');
+    return null;
+  }
+
+  const { data, error } = await supabase
+    .from('qryx_config')
+    .select('shop_intelligence, analyzed_at')
+    .eq('shop_id', shop_id)
+    .single();
+
+  if (error || !data?.shop_intelligence) {
+    return null;
+  }
+
+  // Check if analysis is stale (> 7 days)
+  const STALE_DAYS = 7;
+  const analyzedAt = new Date(data.analyzed_at);
+  const now = new Date();
+  const daysSinceAnalysis = (now.getTime() - analyzedAt.getTime()) / (1000 * 60 * 60 * 24);
+
+  if (daysSinceAnalysis > STALE_DAYS) {
+    console.log('[getShopIntelligence] Analysis is stale, will re-analyze');
+    return null;
+  }
+
+  return data.shop_intelligence;
+}
+
+// =============================================================================
 // EXPORTS
 // =============================================================================
 
@@ -614,4 +690,6 @@ export default {
   getOrCreateQryxConfig,
   updateQryxConfig,
   incrementConversationUsage,
+  saveShopIntelligence,
+  getShopIntelligence,
 };

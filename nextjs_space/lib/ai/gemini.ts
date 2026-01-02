@@ -41,6 +41,9 @@ export interface ProductContext {
   available: boolean;
   imageUrl?: string;
   productUrl?: string;
+  product_type?: string;
+  vendor?: string;
+  tags?: string[];
 }
 
 export interface QryxChatOptions extends ChatCompletionOptions {
@@ -244,15 +247,55 @@ function buildQryxSystemPrompt(options: QryxChatOptions): string {
 }
 
 /**
- * Build product context string for AI
+ * Build enhanced product context string for AI
+ * Now includes product type, vendor, tags, and availability
  */
 function buildProductContext(products: ProductContext[]): string {
   return products
     .map((p, idx) => {
-      let context = `${idx + 1}. ${p.title}`;
-      if (p.price) context += ` - ${p.currency} ${p.price.toFixed(2)}`;
-      if (!p.available) context += ` (OUT OF STOCK)`;
-      if (p.description) context += `\n   ${p.description.substring(0, 150)}${p.description.length > 150 ? '...' : ''}`;
+      let context = `${idx + 1}. **${p.title}**`;
+      
+      // Price and availability
+      if (p.price) {
+        context += `\n   Price: ${p.currency} ${p.price.toFixed(2)}`;
+      }
+      
+      if (!p.available) {
+        context += ` ❌ OUT OF STOCK`;
+      } else {
+        context += ` ✅ In Stock`;
+      }
+      
+      // Category/Type
+      if (p.product_type) {
+        context += `\n   Category: ${p.product_type}`;
+      }
+      
+      // Vendor/Brand
+      if (p.vendor) {
+        context += `\n   Brand: ${p.vendor}`;
+      }
+      
+      // Tags (keywords)
+      if (p.tags && p.tags.length > 0) {
+        context += `\n   Tags: ${p.tags.slice(0, 5).join(', ')}`;
+      }
+      
+      // Description
+      if (p.description) {
+        const cleanDesc = p.description
+          .replace(/<[^>]*>/g, '') // Remove HTML
+          .trim();
+        if (cleanDesc) {
+          context += `\n   Description: ${cleanDesc.substring(0, 200)}${cleanDesc.length > 200 ? '...' : ''}`;
+        }
+      }
+      
+      // Product URL
+      if (p.productUrl) {
+        context += `\n   Link: ${p.productUrl}`;
+      }
+      
       return context;
     })
     .join('\n\n');

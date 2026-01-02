@@ -25,6 +25,8 @@ import {
   addChatMessage,
   getChatMessages,
   getOrCreateQryxConfig,
+  getShopIntelligence,
+  saveShopIntelligence,
 } from '@/lib/db/qryx-helpers';
 import {
   checkConversationLimit,
@@ -32,6 +34,8 @@ import {
   updateWarningFlag,
 } from '@/lib/db/billing-helpers';
 import { getProducts } from '@/lib/shopify/client';
+import { analyzeShop } from '@/lib/ai/shop-analyzer';
+import { buildSmartSystemPrompt } from '@/lib/ai/prompt-templates';
 import { Logger } from '@/lib/observability/logger';
 import { currentUser } from '@clerk/nextjs/server';
 import crypto from 'crypto';
@@ -188,10 +192,16 @@ export async function POST(request: NextRequest) {
       content: msg.content,
     }));
 
+    // =============================================================================
+    // PHASE 5C: SHOP INTELLIGENCE & SMART PROMPTS
+    // =============================================================================
+    
     // Load products (cache for performance)
     let products: ProductContext[] = [];
+    let shopifyProducts: any[] = [];
+    
     try {
-      const shopifyProducts = await getProducts(shop.shop_domain, shop.access_token, 20);
+      shopifyProducts = await getProducts(shop.shop_domain, shop.access_token, 20);
       products = shopifyProducts.map(p => ({
         id: p.id,
         title: p.title,
@@ -201,10 +211,49 @@ export async function POST(request: NextRequest) {
         available: (p.variants[0]?.inventory_quantity || 0) > 0,
         imageUrl: p.images?.[0]?.src,
         productUrl: `https://${shop.shop_domain}/products/${p.handle}`,
+        product_type: p.product_type,
+        vendor: p.vendor,
+        tags: p.tags ? p.tags.split(',').map((t: string) => t.trim()) : [],
       }));
     } catch (error) {
       logger.error('Failed to fetch products', { shop_id: shop.id, error });
       // Continue without products - AI can still help
+    }
+    
+    // Load or analyze shop intelligence
+    let intelligence = await getShopIntelligence(shop.id);
+    
+    if (!intelligence && shopifyProducts.length > 0) {
+      try {
+        // Analyze shop for the first time or re-analyze if stale
+        logger.info('Analyzing shop intelligence', { shop_id: shop.id });
+        
+        const shopData = {
+          id: shop.id,
+          name: shop.shop_name,
+          email: '',
+          domain: shop.shop_domain,
+          plan_name: '',
+          country_code: '',
+          currency: 'USD',
+          timezone: '',
+        };
+        
+        intelligence = await analyzeShop(shopData, shopifyProducts);
+        
+        // Save to cache
+        await saveShopIntelligence(shop.id, intelligence);
+        
+        logger.info('Shop intelligence saved', {
+          shop_id: shop.id,
+          category: intelligence.category,
+          priceRange: intelligence.priceRange,
+          brandVoice: intelligence.brandVoice,
+        });
+      } catch (error) {
+        logger.error('Failed to analyze shop', { shop_id: shop.id, error });
+        // Continue without intelligence - fallback to generic prompt
+      }
     }
 
     // Save user message
@@ -214,14 +263,39 @@ export async function POST(request: NextRequest) {
       content: sanitizedMessage,
     });
 
-    // Get AI response
+    // Build smart system prompt if intelligence available
+    let systemPrompt = config.system_prompt || undefined;
+    
+    if (intelligence) {
+      try {
+        systemPrompt = buildSmartSystemPrompt({
+          shopName: shop.shop_name,
+          intelligence,
+          customerContext: {
+            name: customer_name || session.customer_name || undefined,
+            email: customer_email || session.customer_email || undefined,
+          },
+        });
+        
+        logger.info('Using smart system prompt', {
+          shop_id: shop.id,
+          category: intelligence.category,
+          brandVoice: intelligence.brandVoice,
+        });
+      } catch (error) {
+        logger.error('Failed to build smart prompt, using fallback', { error });
+        // systemPrompt already has fallback value
+      }
+    }
+    
+    // Get AI response with shop-aware prompt
     const aiResponse = await qryxChat(sanitizedMessage, {
       shopName: shop.shop_name,
       products,
       conversationHistory,
       temperature: config.temperature,
       maxTokens: config.max_tokens,
-      systemPrompt: config.system_prompt || undefined,
+      systemPrompt,
       customerContext: {
         name: customer_name || session.customer_name || undefined,
         email: customer_email || session.customer_email || undefined,
