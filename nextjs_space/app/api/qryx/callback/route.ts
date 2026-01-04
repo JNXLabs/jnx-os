@@ -131,20 +131,25 @@ export async function GET(request: NextRequest) {
     });
 
     // Step 6: Install the chat widget on the Shopify store
+    let widgetInstalled = false;
     try {
       const scriptTagId = await installChatWidget(shop, accessToken, shopRecord.id);
-      console.log('[Qryx Callback] Widget installed, scriptTagId:', scriptTagId);
+      console.log('[Qryx Callback] Widget installed successfully, scriptTagId:', scriptTagId);
+      widgetInstalled = true;
     } catch (widgetError) {
-      console.error('[Qryx Callback] Widget installation failed (non-fatal):', widgetError);
-      // Continue - widget can be installed manually later
+      console.error('[Qryx Callback] Widget installation failed:', widgetError);
+      // Continue to dashboard but show warning
     }
 
     // Step 7: SUCCESS! Redirect to dashboard with success message
     const successUrl = new URL('/app/qryx', baseUrl);
     successUrl.searchParams.set('shop', shop);
     successUrl.searchParams.set('installed', 'true');
+    if (!widgetInstalled) {
+      successUrl.searchParams.set('widget_warning', 'true');
+    }
 
-    console.log('[Qryx Callback] Installation complete! Redirecting to dashboard');
+    console.log('[Qryx Callback] Installation complete! Redirecting to dashboard', { widgetInstalled });
 
     return NextResponse.redirect(successUrl.toString());
     

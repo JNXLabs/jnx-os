@@ -276,7 +276,8 @@ export async function installChatWidget(
   const session = createSession(shop, accessToken);
   const client = new shopify.clients.Rest({ session });
 
-  const widgetUrl = `${SHOPIFY_APP_URL}/widget/qryx.js?shop_id=${shopId}`;
+  // FIXED: Use API endpoint, not static file
+  const widgetUrl = `${SHOPIFY_APP_URL}/api/widget/qryx?shop_id=${shopId}`;
 
   const response = await client.post({
     path: 'script_tags',
