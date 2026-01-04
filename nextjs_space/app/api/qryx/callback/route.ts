@@ -13,7 +13,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { currentUser } from '@clerk/nextjs/server';
-import { validateOAuthCallback, getShopInfo } from '@/lib/shopify/client';
+import { validateOAuthCallback, getShopInfo, installChatWidget } from '@/lib/shopify/client';
 import { upsertShopifyShop, getShopByUserAndDomain } from '@/lib/db/qryx-helpers';
 import { getUserByClerkId, syncUserFromClerk } from '@/lib/db/helpers';
 
@@ -120,7 +120,16 @@ export async function GET(request: NextRequest) {
       hasExistingSubscription: !!existingShop?.subscription_status,
     });
 
-    // Step 6: SUCCESS! Redirect to dashboard with success message
+    // Step 6: Install the chat widget on the Shopify store
+    try {
+      const scriptTagId = await installChatWidget(shop, accessToken, shopRecord.id);
+      console.log('[Qryx Callback] Widget installed, scriptTagId:', scriptTagId);
+    } catch (widgetError) {
+      console.error('[Qryx Callback] Widget installation failed (non-fatal):', widgetError);
+      // Continue - widget can be installed manually later
+    }
+
+    // Step 7: SUCCESS! Redirect to dashboard with success message
     const successUrl = new URL('/app/qryx', baseUrl);
     successUrl.searchParams.set('shop', shop);
     successUrl.searchParams.set('installed', 'true');
