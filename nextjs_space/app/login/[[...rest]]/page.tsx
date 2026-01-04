@@ -16,19 +16,36 @@ export default function LoginPage() {
 
   // Handle embedded auth success
   useEffect(() => {
-    if (embedded === 'true' && isLoaded && isSignedIn && window.opener) {
-      // Notify parent window that auth is complete
-      window.opener.postMessage(
-        { type: 'qryx-auth-complete' },
-        window.location.origin
-      );
+    if (embedded === 'true' && isLoaded && isSignedIn) {
+      console.log('[Login] User signed in, notifying parent window');
       
-      // Show success message briefly, then close
-      setTimeout(() => {
-        window.close();
-      }, 1500);
+      if (window.opener && !window.opener.closed) {
+        try {
+          // Notify parent window that auth is complete
+          window.opener.postMessage(
+            { type: 'qryx-auth-complete' },
+            window.location.origin
+          );
+          console.log('[Login] postMessage sent to parent window');
+        } catch (error) {
+          console.error('[Login] Error sending postMessage:', error);
+        }
+        
+        // Show brief success message, then close
+        setTimeout(() => {
+          console.log('[Login] Closing popup window');
+          window.close();
+        }, 1000);
+      } else {
+        // No opener window, just redirect normally
+        console.log('[Login] No opener window found, redirecting normally');
+        const redirectUrl = searchParams?.get('redirect_url');
+        if (redirectUrl) {
+          window.location.href = redirectUrl;
+        }
+      }
     }
-  }, [embedded, isLoaded, isSignedIn]);
+  }, [embedded, isLoaded, isSignedIn, searchParams]);
 
   // Check if Clerk is configured
   const isClerkConfigured = !!(

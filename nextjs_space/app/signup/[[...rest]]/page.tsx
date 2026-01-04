@@ -13,19 +13,36 @@ export default function SignupPage() {
 
   // Handle embedded auth success
   useEffect(() => {
-    if (embedded === 'true' && isLoaded && isSignedIn && window.opener) {
-      // Notify parent window that auth is complete
-      window.opener.postMessage(
-        { type: 'qryx-auth-complete' },
-        window.location.origin
-      );
+    if (embedded === 'true' && isLoaded && isSignedIn) {
+      console.log('[Signup] User signed in, notifying parent window');
       
-      // Show success message briefly, then close
-      setTimeout(() => {
-        window.close();
-      }, 1500);
+      if (window.opener && !window.opener.closed) {
+        try {
+          // Notify parent window that auth is complete
+          window.opener.postMessage(
+            { type: 'qryx-auth-complete' },
+            window.location.origin
+          );
+          console.log('[Signup] postMessage sent to parent window');
+        } catch (error) {
+          console.error('[Signup] Error sending postMessage:', error);
+        }
+        
+        // Show brief success message, then close
+        setTimeout(() => {
+          console.log('[Signup] Closing popup window');
+          window.close();
+        }, 1000);
+      } else {
+        // No opener window, just redirect normally
+        console.log('[Signup] No opener window found, redirecting normally');
+        const redirectUrl = searchParams?.get('redirect_url');
+        if (redirectUrl) {
+          window.location.href = redirectUrl;
+        }
+      }
     }
-  }, [embedded, isLoaded, isSignedIn]);
+  }, [embedded, isLoaded, isSignedIn, searchParams]);
 
   return (
     <div className="min-h-screen bg-jnx-dark flex flex-col items-center justify-center p-4">

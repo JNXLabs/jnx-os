@@ -8,7 +8,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { ExternalLink, Sparkles, Shield, CheckCircle2 } from 'lucide-react';
+import { ExternalLink, Sparkles, Shield, CheckCircle2, Loader2 } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 
 interface EmbeddedAuthProps {
   shop: string;
@@ -16,22 +17,74 @@ interface EmbeddedAuthProps {
 }
 
 export function EmbeddedAuth({ shop, returnUrl }: EmbeddedAuthProps) {
+  const router = useRouter();
   const [authWindow, setAuthWindow] = useState<Window | null>(null);
   const [isChecking, setIsChecking] = useState(false);
+  const [checkAttempts, setCheckAttempts] = useState(0);
 
   useEffect(() => {
     // Listen for auth completion message from popup
     const handleMessage = (event: MessageEvent) => {
+      // Verify origin for security
+      if (event.origin !== window.location.origin) return;
+      
       if (event.data.type === 'qryx-auth-complete') {
+        console.log('[Embedded Auth] Auth complete message received');
         setIsChecking(true);
-        // Reload to check auth status
-        window.location.reload();
+        setCheckAttempts(0);
+        
+        // Close the popup if still open
+        if (authWindow && !authWindow.closed) {
+          authWindow.close();
+        }
+        
+        // Start checking for auth with retries
+        checkAuthStatus();
       }
     };
 
     window.addEventListener('message', handleMessage);
     return () => window.removeEventListener('message', handleMessage);
-  }, []);
+  }, [authWindow]);
+
+  const checkAuthStatus = async () => {
+    const maxAttempts = 5;
+    
+    for (let i = 0; i < maxAttempts; i++) {
+      console.log(`[Embedded Auth] Checking auth status, attempt ${i + 1}/${maxAttempts}`);
+      setCheckAttempts(i + 1);
+      
+      try {
+        // Call a simple API endpoint to check if user is authenticated
+        const response = await fetch('/api/auth/check', {
+          method: 'GET',
+          credentials: 'include', // Important for cookies
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          if (data.authenticated) {
+            console.log('[Embedded Auth] User is authenticated, reloading page');
+            // Force a full page reload to get fresh server-side data
+            window.location.href = returnUrl || `/products/qryx/setup?shop=${shop}`;
+            return;
+          }
+        }
+      } catch (error) {
+        console.error('[Embedded Auth] Error checking auth status:', error);
+      }
+      
+      // Wait before next attempt (exponential backoff)
+      if (i < maxAttempts - 1) {
+        await new Promise(resolve => setTimeout(resolve, Math.min(1000 * Math.pow(2, i), 5000)));
+      }
+    }
+    
+    // If we get here, auth check failed
+    console.error('[Embedded Auth] Auth check failed after max attempts');
+    setIsChecking(false);
+    alert('Authentication completed, but we could not verify your session. Please try refreshing the page.');
+  };
 
   const handleOpenAuth = () => {
     const authUrl = `/login?redirect_url=${encodeURIComponent(
@@ -49,18 +102,23 @@ export function EmbeddedAuth({ shop, returnUrl }: EmbeddedAuthProps) {
       `width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=yes`
     );
 
+    if (!newWindow) {
+      alert('Popup blocked! Please allow popups for this site and try again.');
+      return;
+    }
+
     setAuthWindow(newWindow);
 
-    // Check if window was closed
+    // Check if window was closed manually without completing auth
     const checkClosed = setInterval(() => {
       if (newWindow?.closed) {
         clearInterval(checkClosed);
         setAuthWindow(null);
-        setIsChecking(true);
-        // Check auth status after window closes
-        setTimeout(() => {
-          window.location.reload();
-        }, 1000);
+        
+        // If window closed and we're not checking, it was closed manually
+        if (!isChecking) {
+          console.log('[Embedded Auth] Popup closed manually');
+        }
       }
     }, 500);
   };
@@ -69,11 +127,16 @@ export function EmbeddedAuth({ shop, returnUrl }: EmbeddedAuthProps) {
     return (
       <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4">
         <div className="max-w-md text-center">
-          <div className="mb-6 inline-flex h-16 w-16 items-center justify-center rounded-full bg-cyan-500/20 animate-pulse">
-            <Sparkles className="h-8 w-8 text-cyan-500" />
+          <div className="mb-6 inline-flex h-16 w-16 items-center justify-center rounded-full bg-cyan-500/20">
+            <Loader2 className="h-8 w-8 text-cyan-500 animate-spin" />
           </div>
-          <h1 className="mb-4 text-2xl font-bold text-white">Checking Authentication...</h1>
-          <p className="text-slate-400">Please wait while we verify your login.</p>
+          <h1 className="mb-4 text-2xl font-bold text-white">Verifying Authentication...</h1>
+          <p className="text-slate-400 mb-2">
+            Please wait while we verify your login.
+          </p>
+          <p className="text-sm text-slate-500">
+            Attempt {checkAttempts} of 5
+          </p>
         </div>
       </div>
     );
@@ -131,7 +194,7 @@ export function EmbeddedAuth({ shop, returnUrl }: EmbeddedAuthProps) {
                 3
               </div>
               <p className="text-sm text-slate-300">
-                Return here after authentication to continue setup
+                This page will automatically update after successful authentication
               </p>
             </div>
           </div>
