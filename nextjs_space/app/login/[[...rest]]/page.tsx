@@ -1,13 +1,35 @@
 'use client';
 
-import { SignIn } from '@clerk/nextjs';
+import { SignIn, useUser } from '@clerk/nextjs';
 import Link from 'next/link';
 import { Zap, AlertCircle } from 'lucide-react';
+import { useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 
 // Force dynamic rendering
 export const dynamic = 'force-dynamic';
 
 export default function LoginPage() {
+  const searchParams = useSearchParams();
+  const embedded = searchParams?.get('embedded');
+  const { isSignedIn, isLoaded } = useUser();
+
+  // Handle embedded auth success
+  useEffect(() => {
+    if (embedded === 'true' && isLoaded && isSignedIn && window.opener) {
+      // Notify parent window that auth is complete
+      window.opener.postMessage(
+        { type: 'qryx-auth-complete' },
+        window.location.origin
+      );
+      
+      // Show success message briefly, then close
+      setTimeout(() => {
+        window.close();
+      }, 1500);
+    }
+  }, [embedded, isLoaded, isSignedIn]);
+
   // Check if Clerk is configured
   const isClerkConfigured = !!(
     process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY

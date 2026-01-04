@@ -1,10 +1,32 @@
 'use client';
 
-import { SignUp } from '@clerk/nextjs';
+import { SignUp, useUser } from '@clerk/nextjs';
 import Link from 'next/link';
 import { Zap } from 'lucide-react';
+import { useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 
 export default function SignupPage() {
+  const searchParams = useSearchParams();
+  const embedded = searchParams?.get('embedded');
+  const { isSignedIn, isLoaded } = useUser();
+
+  // Handle embedded auth success
+  useEffect(() => {
+    if (embedded === 'true' && isLoaded && isSignedIn && window.opener) {
+      // Notify parent window that auth is complete
+      window.opener.postMessage(
+        { type: 'qryx-auth-complete' },
+        window.location.origin
+      );
+      
+      // Show success message briefly, then close
+      setTimeout(() => {
+        window.close();
+      }, 1500);
+    }
+  }, [embedded, isLoaded, isSignedIn]);
+
   return (
     <div className="min-h-screen bg-jnx-dark flex flex-col items-center justify-center p-4">
       {/* Header */}

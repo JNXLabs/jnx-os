@@ -7,6 +7,8 @@
 
 import Link from 'next/link';
 import { ArrowLeft, Zap, TrendingUp, Building2, Sparkles, Check, Gift } from 'lucide-react';
+import { currentUser } from '@clerk/nextjs/server';
+import { EmbeddedAuth } from './embedded-auth';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -86,12 +88,15 @@ const PRICING_PLANS = [
   },
 ];
 
-export default function QryxSetupPage({
+export default async function QryxSetupPage({
   searchParams,
 }: {
   searchParams: { shop?: string };
 }) {
   const shop = searchParams?.shop;
+
+  // Check if user is authenticated
+  const user = await currentUser();
 
   // No shop? Show error
   if (!shop) {
@@ -115,6 +120,11 @@ export default function QryxSetupPage({
         </div>
       </div>
     );
+  }
+
+  // Not authenticated? Show embedded auth handler
+  if (!user) {
+    return <EmbeddedAuth shop={shop} returnUrl={`/products/qryx/setup?shop=${shop}`} />;
   }
 
   return (
