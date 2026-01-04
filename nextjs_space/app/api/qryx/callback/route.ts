@@ -41,7 +41,12 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    console.log('[Qryx Callback] Processing OAuth callback:', { shop });
+    // Parse plan from state (format: nonce_plan_orgId)
+    const stateParts = state.split('_');
+    const plan = stateParts.length >= 2 ? stateParts[1] : 'free';
+    const stateOrgId = stateParts.length >= 3 ? stateParts[2] : null;
+    
+    console.log('[Qryx Callback] Processing OAuth callback:', { shop, plan, stateOrgId });
 
     // CRITICAL: Get currently authenticated user
     const clerkUser = await currentUser();
@@ -98,7 +103,7 @@ export async function GET(request: NextRequest) {
     // Step 4: Check if shop already exists (to preserve subscription status)
     const existingShop = await getShopByUserAndDomain(clerkUser.id, shop);
     
-    // Step 5: Upsert Shopify shop with access token
+    // Step 5: Upsert Shopify shop with access token AND plan info
     const shopRecord = await upsertShopifyShop({
       org_id: jnxUser.org_id,
       clerk_user_id: clerkUser.id,
@@ -112,6 +117,9 @@ export async function GET(request: NextRequest) {
       country_code: shopInfo.country_code,
       currency: shopInfo.currency,
       timezone: shopInfo.timezone,
+      // Set plan from OAuth state (or preserve existing)
+      subscription_status: existingShop?.subscription_status || (plan === 'free' ? 'free' : 'trialing'),
+      plan_tier: existingShop?.plan_tier || plan,
     });
     
     console.log('[Qryx Callback] Shop saved/updated:', {
