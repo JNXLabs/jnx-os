@@ -107,10 +107,13 @@ export interface QryxConfig {
 /**
  * Create or update Shopify shop
  * Links shop to JNX-OS organization
+ * 
+ * IMPORTANT: If subscription_status is provided, it will be set.
+ * Otherwise, existing status is preserved on update.
  */
 export async function upsertShopifyShop(data: {
   org_id: string;
-  clerk_user_id?: string; // PHASE 5B: Added for user-based billing
+  clerk_user_id?: string;
   shop_domain: string;
   shop_name: string;
   shop_email?: string;
@@ -121,46 +124,90 @@ export async function upsertShopifyShop(data: {
   country_code?: string;
   currency?: string;
   timezone?: string;
+  subscription_status?: string;
+  plan_tier?: string;
 }): Promise<ShopifyShop> {
   const supabase = await createSupabaseServerClient();
   if (!supabase) {
     throw new Error("Supabase client not available");
   }
 
-  if (!supabase) {
-    throw new Error('Supabase client not available');
+  // Build the upsert data
+  const upsertData: Record<string, unknown> = {
+    org_id: data.org_id,
+    clerk_user_id: data.clerk_user_id || null,
+    shop_domain: data.shop_domain,
+    shop_name: data.shop_name,
+    shop_email: data.shop_email || null,
+    shop_owner_name: data.shop_owner_name || null,
+    access_token: data.access_token,
+    scope: data.scope,
+    shopify_plan: data.shopify_plan || null,
+    country_code: data.country_code || null,
+    currency: data.currency || null,
+    timezone: data.timezone || null,
+    installed_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+    uninstalled_at: null, // Clear uninstalled on reinstall
+  };
+
+  // Only set subscription fields if provided (preserve existing on update)
+  if (data.subscription_status) {
+    upsertData.subscription_status = data.subscription_status;
+  }
+  if (data.plan_tier) {
+    upsertData.plan_tier = data.plan_tier;
   }
 
   const { data: shop, error } = await supabase
     .from('shopify_shops')
-    .upsert(
-      {
-        org_id: data.org_id,
-        clerk_user_id: data.clerk_user_id || null, // PHASE 5B: For user-based billing
-        shop_domain: data.shop_domain,
-        shop_name: data.shop_name,
-        shop_email: data.shop_email || null,
-        shop_owner_name: data.shop_owner_name || null,
-        access_token: data.access_token,
-        scope: data.scope,
-        shopify_plan: data.shopify_plan || null,
-        country_code: data.country_code || null,
-        currency: data.currency || null,
-        timezone: data.timezone || null,
-        installed_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      },
-      {
-        onConflict: 'shop_domain',
-        ignoreDuplicates: false,
-      }
-    )
+    .upsert(upsertData, {
+      onConflict: 'shop_domain',
+      ignoreDuplicates: false,
+    })
     .select()
     .single();
 
   if (error) {
     console.error('[Qryx] Failed to upsert shopify shop:', error.message);
     throw new Error('Failed to save Shopify shop');
+  }
+
+  return shop as ShopifyShop;
+}
+
+/**
+ * Update shop subscription status
+ * Called after successful payment or when selecting free plan
+ */
+export async function updateShopSubscription(
+  shopDomain: string,
+  subscriptionData: {
+    subscription_status: string;
+    plan_tier: string;
+    stripe_customer_id?: string;
+    stripe_subscription_id?: string;
+    trial_ends_at?: string;
+  }
+): Promise<ShopifyShop | null> {
+  const supabase = await createSupabaseServerClient();
+  if (!supabase) {
+    throw new Error("Supabase client not available");
+  }
+
+  const { data: shop, error } = await supabase
+    .from('shopify_shops')
+    .update({
+      ...subscriptionData,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('shop_domain', shopDomain)
+    .select()
+    .single();
+
+  if (error) {
+    console.error('[Qryx] Failed to update shop subscription:', error.message);
+    return null;
   }
 
   return shop as ShopifyShop;
@@ -174,7 +221,6 @@ export async function getShopifyShop(shop_domain: string): Promise<ShopifyShop |
   if (!supabase) {
     throw new Error("Supabase client not available");
   }
-
 
   const { data: shop, error } = await supabase
     .from('shopify_shops')
@@ -191,6 +237,62 @@ export async function getShopifyShop(shop_domain: string): Promise<ShopifyShop |
   }
 
   return shop as ShopifyShop;
+}
+
+/**
+ * Get Shopify shop by Clerk User ID and domain
+ * Used to check if user already has this shop installed
+ */
+export async function getShopByUserAndDomain(clerkUserId: string, shopDomain: string): Promise<ShopifyShop | null> {
+  const supabase = await createSupabaseServerClient();
+  if (!supabase) {
+    throw new Error("Supabase client not available");
+  }
+
+  const { data: shop, error } = await supabase
+    .from('shopify_shops')
+    .select('*')
+    .eq('clerk_user_id', clerkUserId)
+    .eq('shop_domain', shopDomain)
+    .is('deleted_at', null)
+    .is('uninstalled_at', null)
+    .maybeSingle();
+
+  if (error) {
+    console.error('[Qryx] Failed to get shop by user and domain:', error.message);
+    return null;
+  }
+
+  return shop as ShopifyShop | null;
+}
+
+/**
+ * Check if user already has an active Qryx subscription for any shop
+ * Returns the shop data if found
+ */
+export async function getUserActiveQryxShop(clerkUserId: string): Promise<ShopifyShop | null> {
+  const supabase = await createSupabaseServerClient();
+  if (!supabase) {
+    throw new Error("Supabase client not available");
+  }
+
+  const { data: shop, error } = await supabase
+    .from('shopify_shops')
+    .select('*')
+    .eq('clerk_user_id', clerkUserId)
+    .is('deleted_at', null)
+    .is('uninstalled_at', null)
+    .in('subscription_status', ['active', 'trialing', 'free'])
+    .order('installed_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    console.error('[Qryx] Failed to get user active shop:', error.message);
+    return null;
+  }
+
+  return shop as ShopifyShop | null;
 }
 
 /**

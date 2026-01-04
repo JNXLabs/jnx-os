@@ -1,34 +1,32 @@
 /**
  * Qryx OAuth Callback Endpoint - SaaS Flow
  * 
- * CRITICAL: This handles Shopify OAuth callback for EXISTING authenticated users
+ * This handles Shopify OAuth callback AFTER payment/plan selection
  * 
- * Phase 5 SaaS Flow:
- * 1. User already logged in to JNX Labs
- * 2. User initiates Shopify OAuth from /api/qryx/install
- * 3. Shopify redirects here after approval
- * 4. Link shop to EXISTING user/org (don't create new ones!)
- * 5. Save shop session and redirect to /api/qryx/install
- * 6. Install route redirects to plan selection
- * 
- * Step 2: Shopify redirects here after merchant approves OAuth
+ * Flow:
+ * 1. User selects plan → Payment (if paid) → OAuth starts
+ * 2. Shopify redirects here with code + state
+ * 3. Exchange code for access token
+ * 4. Save shop with access token
+ * 5. Redirect to SUCCESS page (widget installation complete!)
  */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { currentUser } from '@clerk/nextjs/server';
 import { validateOAuthCallback, getShopInfo } from '@/lib/shopify/client';
-import { upsertShopifyShop } from '@/lib/db/qryx-helpers';
-import { getUserByClerkId } from '@/lib/db/helpers';
-import { setShopSession } from '@/lib/session/shop-session';
+import { upsertShopifyShop, getShopByUserAndDomain } from '@/lib/db/qryx-helpers';
+import { getUserByClerkId, syncUserFromClerk } from '@/lib/db/helpers';
 
 export const dynamic = 'force-dynamic';
 
 /**
  * GET /api/qryx/callback?shop=example.myshopify.com&code=xxx&state=xxx
  * 
- * Handles OAuth callback from Shopify for SaaS flow
+ * Handles OAuth callback from Shopify - final step of installation
  */
 export async function GET(request: NextRequest) {
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://www.jnxlabs.ai';
+  
   try {
     const searchParams = request.nextUrl.searchParams;
     const shop = searchParams.get('shop');
@@ -38,9 +36,8 @@ export async function GET(request: NextRequest) {
     // Validate required parameters
     if (!shop || !code || !state) {
       console.error('[Qryx Callback] Missing parameters:', { shop, code: !!code, state: !!state });
-      return NextResponse.json(
-        { error: 'Missing required parameters' },
-        { status: 400 }
+      return NextResponse.redirect(
+        new URL(`/products/qryx/setup?error=missing_oauth_params`, baseUrl)
       );
     }
 
@@ -51,10 +48,10 @@ export async function GET(request: NextRequest) {
 
     if (!clerkUser) {
       console.error('[Qryx Callback] No authenticated user found!');
-      // Redirect to login with return URL
-      const loginUrl = new URL('/login', request.url);
-      loginUrl.searchParams.set('redirect_url', `/api/qryx/install?shop=${shop}`);
-      return NextResponse.redirect(loginUrl);
+      // Redirect to login with return URL back to setup
+      return NextResponse.redirect(
+        new URL(`/login?redirect_url=${encodeURIComponent(`/products/qryx/setup?shop=${shop}`)}`, baseUrl)
+      );
     }
 
     console.log('[Qryx Callback] Authenticated user:', {
@@ -62,15 +59,23 @@ export async function GET(request: NextRequest) {
       email: clerkUser.emailAddresses[0]?.emailAddress,
     });
 
-    // Step 1: Get JNX user from database
-    const jnxUser = await getUserByClerkId(clerkUser.id);
-
+    // Step 1: Get or create JNX user from database
+    let jnxUser = await getUserByClerkId(clerkUser.id);
+    
     if (!jnxUser || !jnxUser.org_id) {
-      console.error('[Qryx Callback] User not synced to database!', { clerkId: clerkUser.id });
-      return NextResponse.json(
-        { error: 'User not properly initialized. Please contact support.' },
-        { status: 500 }
-      );
+      // Try to sync user from Clerk (handles new registrations)
+      console.log('[Qryx Callback] User not in DB, attempting sync...');
+      const email = clerkUser.emailAddresses[0]?.emailAddress || '';
+      const firstName = clerkUser.firstName || null;
+      const lastName = clerkUser.lastName || null;
+      jnxUser = await syncUserFromClerk(clerkUser.id, email, firstName, lastName);
+      
+      if (!jnxUser || !jnxUser.org_id) {
+        console.error('[Qryx Callback] Failed to sync user!', { clerkId: clerkUser.id });
+        return NextResponse.redirect(
+          new URL(`/products/qryx/setup?shop=${encodeURIComponent(shop)}&error=user_sync_failed`, baseUrl)
+        );
+      }
     }
 
     console.log('[Qryx Callback] JNX user loaded:', {
@@ -90,10 +95,13 @@ export async function GET(request: NextRequest) {
       plan: shopInfo.plan_name,
     });
 
-    // Step 4: Link Shopify shop to EXISTING user/org
+    // Step 4: Check if shop already exists (to preserve subscription status)
+    const existingShop = await getShopByUserAndDomain(clerkUser.id, shop);
+    
+    // Step 5: Upsert Shopify shop with access token
     const shopRecord = await upsertShopifyShop({
       org_id: jnxUser.org_id,
-      clerk_user_id: clerkUser.id, // PHASE 5B: For user-based billing
+      clerk_user_id: clerkUser.id,
       shop_domain: shop,
       shop_name: shopInfo.name,
       shop_email: shopInfo.email,
@@ -105,29 +113,30 @@ export async function GET(request: NextRequest) {
       currency: shopInfo.currency,
       timezone: shopInfo.timezone,
     });
-    console.log('[Qryx Callback] Shopify shop linked to existing org:', {
+    
+    console.log('[Qryx Callback] Shop saved/updated:', {
       shopId: shopRecord.id,
       orgId: jnxUser.org_id,
+      hasExistingSubscription: !!existingShop?.subscription_status,
     });
 
-    // Step 5: Save shop to session for plan selection
-    await setShopSession(shop);
-    console.log('[Qryx Callback] Shop saved to session');
+    // Step 6: SUCCESS! Redirect to dashboard with success message
+    const successUrl = new URL('/app/qryx', baseUrl);
+    successUrl.searchParams.set('shop', shop);
+    successUrl.searchParams.set('installed', 'true');
 
-    // Step 6: Redirect to /api/qryx/install
-    // This will check auth status and redirect to /products/qryx/setup for plan selection
-    const installUrl = new URL('/api/qryx/install', request.url);
-    installUrl.searchParams.set('shop', shop);
+    console.log('[Qryx Callback] Installation complete! Redirecting to dashboard');
 
-    console.log('[Qryx Callback] OAuth complete! Redirecting to plan selection');
-
-    return NextResponse.redirect(installUrl.toString());
+    return NextResponse.redirect(successUrl.toString());
+    
   } catch (error) {
     console.error('[Qryx Callback] Installation failed:', error);
 
-    // Redirect to error page with details
-    const errorUrl = new URL('/products/qryx/setup', request.url);
-    errorUrl.searchParams.set('error', error instanceof Error ? error.message : 'OAuth callback failed');
+    // Redirect to setup page with error
+    const shop = request.nextUrl.searchParams.get('shop');
+    const errorUrl = new URL('/products/qryx/setup', baseUrl);
+    if (shop) errorUrl.searchParams.set('shop', shop);
+    errorUrl.searchParams.set('error', 'oauth_failed');
 
     return NextResponse.redirect(errorUrl.toString());
   }

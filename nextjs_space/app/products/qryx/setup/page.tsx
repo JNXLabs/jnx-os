@@ -1,32 +1,36 @@
 /**
- * Qryx Setup Page - Plan Selection
+ * Qryx Setup Page - Plan Selection & Installation
  * 
  * ENTERPRISE-GRADE SHOPIFY INSTALLATION FLOW
  * 
- * This page handles ALL installation scenarios:
+ * This page handles ALL customer scenarios:
  * 
- * 1. DIRECT BROWSER ACCESS (not in iframe)
- *    - User opens install link directly
- *    - Normal Clerk auth works fine
- *    - Show pricing directly after login
+ * SCENARIO 1: USER HAS JNX ACCOUNT + QRYX ALREADY PURCHASED FOR THIS SHOP
+ *    - Show "Install Widget" button only
+ *    - No pricing needed
+ *    - Direct to OAuth installation
  * 
- * 2. SHOPIFY ADMIN EMBEDDED (iframe)
- *    - Third-party cookies are BLOCKED
- *    - Clerk auth CANNOT work in iframe
+ * SCENARIO 2: USER HAS JNX ACCOUNT BUT NO QRYX FOR THIS SHOP
+ *    - Show pricing/plan selection
+ *    - After payment → OAuth installation
+ * 
+ * SCENARIO 3: USER NOT REGISTERED
+ *    - Show "Sign In to Continue" 
+ *    - After registration → Show pricing
+ *    - After payment → OAuth installation
+ * 
+ * EMBEDDED (IFRAME) HANDLING:
+ *    - Third-party cookies are BLOCKED in iframes
  *    - SOLUTION: Redirect entire browser window to auth
  *    - After auth, user returns here
- * 
- * 3. RETURNING FROM AUTH (with auth_complete param)
- *    - User just completed auth on full page
- *    - Session is now valid
- *    - Show pricing
  */
 
 import Link from 'next/link';
-import { ArrowLeft, Zap, TrendingUp, Building2, Sparkles, Check, Gift } from 'lucide-react';
+import { ArrowLeft, Zap, TrendingUp, Building2, Sparkles, Check, Gift, Store, CheckCircle2 } from 'lucide-react';
 import { currentUser } from '@clerk/nextjs/server';
 import { headers } from 'next/headers';
 import { EmbeddedAuthRedirect } from './embedded-auth-redirect';
+import { getShopByUserAndDomain } from '@/lib/db/qryx-helpers';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -125,10 +129,11 @@ function isInIframe(headersList: Headers): boolean {
 export default async function QryxSetupPage({
   searchParams,
 }: {
-  searchParams: { shop?: string; auth_complete?: string };
+  searchParams: { shop?: string; auth_complete?: string; error?: string };
 }) {
   const shop = searchParams?.shop;
   const authComplete = searchParams?.auth_complete === 'true';
+  const errorParam = searchParams?.error;
   
   // Get request headers to detect iframe
   const headersList = headers();
@@ -161,13 +166,125 @@ export default async function QryxSetupPage({
     );
   }
 
-  // Not authenticated? Show appropriate auth handler
+  // =========================================================================
+  // SCENARIO 3: NOT AUTHENTICATED → Show Sign In UI
+  // =========================================================================
   if (!user) {
-    // Return client component that will handle the redirect properly
     return <EmbeddedAuthRedirect shop={shop} />;
   }
 
-  // USER IS AUTHENTICATED - Show pricing page
+  // =========================================================================
+  // USER IS AUTHENTICATED - Check if they already have Qryx for this shop
+  // =========================================================================
+  let existingShop = null;
+  try {
+    existingShop = await getShopByUserAndDomain(user.id, shop);
+  } catch (error) {
+    console.error('[Qryx Setup] Error checking existing shop:', error);
+  }
+
+  // =========================================================================
+  // SCENARIO 1: USER ALREADY HAS QRYX FOR THIS SHOP → Show Install Button
+  // =========================================================================
+  if (existingShop && existingShop.subscription_status && ['active', 'trialing', 'free'].includes(existingShop.subscription_status)) {
+    return (
+      <div className="min-h-screen bg-slate-950">
+        {/* Header */}
+        <header className="border-b border-slate-800/50 bg-slate-900/50 backdrop-blur-sm">
+          <div className="mx-auto max-w-7xl px-4 py-4 sm:px-6 lg:px-8">
+            <div className="flex items-center justify-between">
+              <Link
+                href="/app"
+                className="inline-flex items-center gap-2 text-sm text-slate-400 hover:text-white transition-colors"
+              >
+                <ArrowLeft className="h-4 w-4" />
+                Back to Dashboard
+              </Link>
+              <div className="flex items-center gap-2">
+                <Sparkles className="h-5 w-5 text-cyan-500" />
+                <span className="font-semibold text-white">Qryx Setup</span>
+              </div>
+            </div>
+          </div>
+        </header>
+
+        {/* Already Purchased - Install Widget */}
+        <main className="mx-auto max-w-2xl px-4 py-16 sm:px-6 lg:px-8">
+          <div className="text-center">
+            {/* Success Icon */}
+            <div className="mb-6 inline-flex h-20 w-20 items-center justify-center rounded-full bg-emerald-500/20">
+              <CheckCircle2 className="h-10 w-10 text-emerald-500" />
+            </div>
+
+            <h1 className="mb-3 text-3xl font-bold text-white">
+              Qryx is Ready!
+            </h1>
+            
+            <p className="mb-2 text-lg text-slate-400">
+              You already have an active <span className="text-cyan-400 font-medium capitalize">{existingShop.subscription_status === 'free' ? 'Free' : existingShop.plan_tier || 'Starter'}</span> plan.
+            </p>
+            
+            <p className="mb-8 text-slate-500">
+              Installing for: <span className="text-cyan-400">{shop}</span>
+            </p>
+
+            {/* Current Plan Info */}
+            <div className="mb-8 rounded-xl border border-slate-800/60 bg-slate-900/40 p-6">
+              <div className="flex items-center justify-center gap-3 mb-4">
+                <Store className="h-6 w-6 text-cyan-500" />
+                <span className="text-lg font-semibold text-white">{existingShop.shop_name || shop}</span>
+              </div>
+              <div className="text-sm text-slate-400">
+                Plan: <span className="text-white capitalize">{existingShop.plan_tier || 'Free'}</span>
+                {existingShop.subscription_status === 'trialing' && (
+                  <span className="ml-2 text-amber-400">(Trial)</span>
+                )}
+              </div>
+            </div>
+
+            {/* Install / Reinstall Widget Button */}
+            <a
+              href={`/api/qryx/start-oauth?shop=${encodeURIComponent(shop)}&plan=${existingShop.plan_tier || 'free'}`}
+              className="inline-flex items-center gap-2 rounded-lg bg-cyan-500 px-8 py-4 font-semibold text-slate-900 transition-all hover:bg-cyan-400 shadow-lg shadow-cyan-500/25"
+            >
+              <Store className="h-5 w-5" />
+              {existingShop.access_token ? 'Reinstall Widget' : 'Install Widget'}
+            </a>
+
+            <p className="mt-4 text-sm text-slate-500">
+              This will connect Qryx to your Shopify store and add the chat widget.
+            </p>
+
+            {/* Manage Subscription Link */}
+            <div className="mt-8 pt-6 border-t border-slate-800/50">
+              <Link
+                href="/app/billing"
+                className="text-sm text-slate-400 hover:text-cyan-400 transition-colors"
+              >
+                Manage your subscription →
+              </Link>
+            </div>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
+  // =========================================================================
+  // SCENARIO 2: USER AUTHENTICATED BUT NO QRYX → Show Pricing Page
+  // =========================================================================
+  
+  // Show error if any
+  const showError = errorParam ? (
+    <div className="mb-6 rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-center">
+      <p className="text-sm text-red-400">
+        {errorParam === 'missing_payment' && 'Payment is required for this plan.'}
+        {errorParam === 'payment_incomplete' && 'Payment was not completed. Please try again.'}
+        {errorParam === 'oauth_failed' && 'Failed to connect to Shopify. Please try again.'}
+        {!['missing_payment', 'payment_incomplete', 'oauth_failed'].includes(errorParam) && `Error: ${errorParam}`}
+      </p>
+    </div>
+  ) : null;
   return (
     <div className="min-h-screen bg-slate-950">
       {/* Header */}
@@ -197,6 +314,13 @@ export default async function QryxSetupPage({
           </p>
         </div>
       </div>
+
+      {/* Error display */}
+      {showError && (
+        <div className="mx-auto max-w-7xl px-4 pt-6 sm:px-6 lg:px-8">
+          {showError}
+        </div>
+      )}
 
       {/* Main content */}
       <main className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
