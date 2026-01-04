@@ -99,41 +99,11 @@ export async function GET(request: NextRequest) {
     if (plan === 'free') {
       logger.info('Free plan selected:', { userId: user.id, shop, orgId: jnxUser.org_id });
       
-      // Create initial shop record with free status
-      const supabase = await createSupabaseServerClient();
-      if (!supabase) {
-        logger.error('Supabase client not available!');
-        return NextResponse.redirect(
-          new URL(`/products/qryx/setup?shop=${encodeURIComponent(shop)}&error=database_unavailable`, baseUrl)
-        );
-      }
+      // DON'T create shop record here - it will be created in callback
+      // The shop record requires access_token which we don't have yet
       
-      const { data: shopData, error: shopError } = await supabase.from('shopify_shops').upsert({
-        org_id: jnxUser.org_id,
-        clerk_user_id: user.id,
-        shop_domain: shop,
-        shop_name: shop.replace('.myshopify.com', ''),
-        subscription_status: 'free',
-        plan_tier: 'free',
-        access_token: '', // Will be filled by callback
-        scope: '',
-        updated_at: new Date().toISOString(),
-      }, {
-        onConflict: 'shop_domain',
-        ignoreDuplicates: false,
-      }).select();
-      
-      if (shopError) {
-        logger.error('Failed to create shop record:', { error: shopError.message, code: shopError.code, details: shopError.details });
-        return NextResponse.redirect(
-          new URL(`/products/qryx/setup?shop=${encodeURIComponent(shop)}&error=shop_creation_failed`, baseUrl)
-        );
-      }
-      
-      logger.info('Created shop record with free status:', { shopId: shopData?.[0]?.id });
-      
-      // Generate Shopify OAuth URL
-      const state = generateNonce();
+      // Generate Shopify OAuth URL with plan info in state
+      const state = `${generateNonce()}_free_${jnxUser.org_id}`;
       const authUrl = await getAuthorizationUrl(shop, state);
       
       logger.info('Redirecting to Shopify OAuth (free plan)');
