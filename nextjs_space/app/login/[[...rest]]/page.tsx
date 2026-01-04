@@ -25,8 +25,10 @@ export default function LoginPage() {
       // Use window.location for a full page navigation
       // This ensures cookies are properly set
       setTimeout(() => {
-        window.location.href = decodeURIComponent(redirectUrl);
-      }, 500);
+        const decodedUrl = decodeURIComponent(redirectUrl);
+        console.log('[Login] Final redirect URL:', decodedUrl);
+        window.location.href = decodedUrl;
+      }, 100); // Reduced timeout to 100ms for faster redirect
     }
   }, [isLoaded, isSignedIn, redirectUrl, isRedirecting]);
 
@@ -126,8 +128,8 @@ export default function LoginPage() {
             routing="path"
             path="/login"
             signUpUrl="/signup"
-            fallbackRedirectUrl="/app"
-            forceRedirectUrl="/app"
+            fallbackRedirectUrl={redirectUrl ? decodeURIComponent(redirectUrl) : "/app"}
+            forceRedirectUrl={redirectUrl ? decodeURIComponent(redirectUrl) : undefined}
           />
         </div>
 

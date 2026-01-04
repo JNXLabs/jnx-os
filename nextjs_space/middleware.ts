@@ -16,6 +16,10 @@ const isPublicRoute = createRouteMatcher([
   '/privacy',
   '/terms',
   '/products',
+  '/products/qryx/setup(.*)',  // Allow Qryx setup page (handles auth internally)
+  '/api/qryx/install(.*)',      // Allow Qryx install endpoint
+  '/api/qryx/callback(.*)',     // Allow Qryx OAuth callback
+  '/api/stripe/webhook(.*)',    // Allow Stripe webhook
 ]);
 
 const isAdminRoute = createRouteMatcher(['/admin(.*)']);
@@ -66,8 +70,16 @@ export default clerkMiddleware(async (auth, req) => {
     console.log('[Middleware] Admin access granted');
   }
 
-  // Redirect authenticated users away from login/signup
+  // Redirect authenticated users away from login/signup (unless they have a redirect_url)
   if (userId && (req.nextUrl.pathname === '/login' || req.nextUrl.pathname === '/signup')) {
+    const redirectUrl = req.nextUrl.searchParams.get('redirect_url');
+    
+    // If there's a redirect_url, let the page handle it
+    if (redirectUrl) {
+      return NextResponse.next();
+    }
+    
+    // Otherwise, redirect to dashboard
     const appUrl = new URL('/app', req.url);
     return NextResponse.redirect(appUrl);
   }
