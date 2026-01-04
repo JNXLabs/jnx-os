@@ -2,50 +2,49 @@
 
 import { SignIn, useUser } from '@clerk/nextjs';
 import Link from 'next/link';
-import { Zap, AlertCircle } from 'lucide-react';
-import { useEffect } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { Zap, AlertCircle, Loader2, CheckCircle2 } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { useSearchParams, useRouter } from 'next/navigation';
 
 // Force dynamic rendering
 export const dynamic = 'force-dynamic';
 
 export default function LoginPage() {
   const searchParams = useSearchParams();
-  const embedded = searchParams?.get('embedded');
+  const router = useRouter();
+  const redirectUrl = searchParams?.get('redirect_url');
   const { isSignedIn, isLoaded } = useUser();
+  const [isRedirecting, setIsRedirecting] = useState(false);
 
-  // Handle embedded auth success
+  // Handle successful login - redirect to the specified URL
   useEffect(() => {
-    if (embedded === 'true' && isLoaded && isSignedIn) {
-      console.log('[Login] User signed in, notifying parent window');
+    if (isLoaded && isSignedIn && redirectUrl && !isRedirecting) {
+      console.log('[Login] User signed in, redirecting to:', redirectUrl);
+      setIsRedirecting(true);
       
-      if (window.opener && !window.opener.closed) {
-        try {
-          // Notify parent window that auth is complete
-          window.opener.postMessage(
-            { type: 'qryx-auth-complete' },
-            window.location.origin
-          );
-          console.log('[Login] postMessage sent to parent window');
-        } catch (error) {
-          console.error('[Login] Error sending postMessage:', error);
-        }
-        
-        // Show brief success message, then close
-        setTimeout(() => {
-          console.log('[Login] Closing popup window');
-          window.close();
-        }, 1000);
-      } else {
-        // No opener window, just redirect normally
-        console.log('[Login] No opener window found, redirecting normally');
-        const redirectUrl = searchParams?.get('redirect_url');
-        if (redirectUrl) {
-          window.location.href = redirectUrl;
-        }
-      }
+      // Use window.location for a full page navigation
+      // This ensures cookies are properly set
+      setTimeout(() => {
+        window.location.href = decodeURIComponent(redirectUrl);
+      }, 500);
     }
-  }, [embedded, isLoaded, isSignedIn, searchParams]);
+  }, [isLoaded, isSignedIn, redirectUrl, isRedirecting]);
+
+  // Show redirecting state
+  if (isRedirecting || (isLoaded && isSignedIn && redirectUrl)) {
+    return (
+      <div className="min-h-screen bg-jnx-dark flex flex-col items-center justify-center p-4">
+        <div className="text-center">
+          <div className="mb-6 inline-flex h-16 w-16 items-center justify-center rounded-full bg-green-500/20">
+            <CheckCircle2 className="h-8 w-8 text-green-500" />
+          </div>
+          <h1 className="text-2xl font-bold text-white mb-2">Login Successful!</h1>
+          <p className="text-slate-400 mb-4">Redirecting you back...</p>
+          <Loader2 className="h-6 w-6 text-cyan-500 animate-spin mx-auto" />
+        </div>
+      </div>
+    );
+  }
 
   // Check if Clerk is configured
   const isClerkConfigured = !!(

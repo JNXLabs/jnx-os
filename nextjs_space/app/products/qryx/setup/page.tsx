@@ -1,14 +1,32 @@
 /**
- * Qryx Product Selection & Pricing Page
+ * Qryx Setup Page - Plan Selection
  * 
- * Step 3 in SaaS Installation Flow:
- * Shop saved → Login complete → HERE → Payment → OAuth
+ * ENTERPRISE-GRADE SHOPIFY INSTALLATION FLOW
+ * 
+ * This page handles ALL installation scenarios:
+ * 
+ * 1. DIRECT BROWSER ACCESS (not in iframe)
+ *    - User opens install link directly
+ *    - Normal Clerk auth works fine
+ *    - Show pricing directly after login
+ * 
+ * 2. SHOPIFY ADMIN EMBEDDED (iframe)
+ *    - Third-party cookies are BLOCKED
+ *    - Clerk auth CANNOT work in iframe
+ *    - SOLUTION: Redirect entire browser window to auth
+ *    - After auth, user returns here
+ * 
+ * 3. RETURNING FROM AUTH (with auth_complete param)
+ *    - User just completed auth on full page
+ *    - Session is now valid
+ *    - Show pricing
  */
 
 import Link from 'next/link';
 import { ArrowLeft, Zap, TrendingUp, Building2, Sparkles, Check, Gift } from 'lucide-react';
 import { currentUser } from '@clerk/nextjs/server';
-import { EmbeddedAuth } from './embedded-auth';
+import { headers } from 'next/headers';
+import { EmbeddedAuthRedirect } from './embedded-auth-redirect';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -17,8 +35,7 @@ const PRICING_PLANS = [
   {
     id: 'free',
     name: 'Free',
-    price: '$0',
-    period: '/month',
+    price: 0,
     description: 'Try Qryx with basic features - no credit card required',
     features: [
       '50 conversations/month',
@@ -26,15 +43,16 @@ const PRICING_PLANS = [
       'Product recommendations',
       'Community support',
     ],
+    icon: Gift,
+    color: 'emerald',
     popular: false,
-    color: 'slate',
     isFree: true,
   },
   {
     id: 'starter',
     name: 'Starter',
-    price: '$29',
-    period: '/month',
+    price: 29,
+    priceId: process.env.STRIPE_PRICE_STARTER,
     description: 'Perfect for small Shopify stores getting started with AI',
     features: [
       '500 conversations/month',
@@ -44,15 +62,16 @@ const PRICING_PLANS = [
       'Standard analytics',
       'Email support (24h response)',
     ],
-    popular: false,
+    icon: Zap,
     color: 'cyan',
+    popular: false,
     isFree: false,
   },
   {
     id: 'professional',
     name: 'Professional',
-    price: '$79',
-    period: '/month',
+    price: 79,
+    priceId: process.env.STRIPE_PRICE_PROFESSIONAL,
     description: 'Best for growing stores that need advanced features',
     features: [
       '2,000 conversations/month',
@@ -63,15 +82,16 @@ const PRICING_PLANS = [
       'Priority support (4h response)',
       'Conversion tracking',
     ],
+    icon: TrendingUp,
+    color: 'cyan',
     popular: true,
-    color: 'blue',
     isFree: false,
   },
   {
     id: 'business',
     name: 'Business',
-    price: '$199',
-    period: '/month',
+    price: 199,
+    priceId: process.env.STRIPE_PRICE_BUSINESS,
     description: 'For established stores with premium requirements',
     features: [
       '5,000 conversations/month',
@@ -82,19 +102,38 @@ const PRICING_PLANS = [
       'Custom integrations',
       'Dedicated Slack channel',
     ],
+    icon: Building2,
+    color: 'slate',
     popular: false,
-    color: 'purple',
     isFree: false,
   },
 ];
 
+// Detect if request is from an iframe
+function isInIframe(headersList: Headers): boolean {
+  // Check Sec-Fetch-Dest header (modern browsers)
+  const secFetchDest = headersList.get('sec-fetch-dest');
+  if (secFetchDest === 'iframe') return true;
+  
+  // Check for Shopify-specific headers
+  const shopifyHeader = headersList.get('x-shopify-api-request-failure-reauthorize');
+  if (shopifyHeader) return true;
+  
+  return false;
+}
+
 export default async function QryxSetupPage({
   searchParams,
 }: {
-  searchParams: { shop?: string };
+  searchParams: { shop?: string; auth_complete?: string };
 }) {
   const shop = searchParams?.shop;
-
+  const authComplete = searchParams?.auth_complete === 'true';
+  
+  // Get request headers to detect iframe
+  const headersList = headers();
+  const isEmbedded = isInIframe(headersList);
+  
   // Check if user is authenticated
   const user = await currentUser();
 
@@ -106,13 +145,13 @@ export default async function QryxSetupPage({
           <div className="mb-6 inline-flex h-16 w-16 items-center justify-center rounded-full bg-red-500/20">
             <Sparkles className="h-8 w-8 text-red-500" />
           </div>
-          <h1 className="mb-4 text-2xl font-bold text-white">Session Expired</h1>
+          <h1 className="mb-4 text-2xl font-bold text-white">Missing Shop Parameter</h1>
           <p className="mb-6 text-slate-400">
-            Your installation session has expired. Please restart the installation from your Shopify admin.
+            Please start the installation from your Shopify Admin or use the correct installation link.
           </p>
           <Link
             href="/products"
-            className="inline-flex items-center gap-2 rounded-lg bg-cyan-500 px-6 py-3 font-semibold text-slate-900 hover:bg-cyan-400"
+            className="inline-flex items-center gap-2 rounded-lg bg-slate-800 px-4 py-2 text-sm text-slate-300 hover:bg-slate-700 transition-colors"
           >
             <ArrowLeft className="h-4 w-4" />
             Back to Products
@@ -122,11 +161,13 @@ export default async function QryxSetupPage({
     );
   }
 
-  // Not authenticated? Show embedded auth handler
+  // Not authenticated? Show appropriate auth handler
   if (!user) {
-    return <EmbeddedAuth shop={shop} returnUrl={`/products/qryx/setup?shop=${shop}`} />;
+    // Return client component that will handle the redirect properly
+    return <EmbeddedAuthRedirect shop={shop} />;
   }
 
+  // USER IS AUTHENTICATED - Show pricing page
   return (
     <div className="min-h-screen bg-slate-950">
       {/* Header */}
@@ -135,21 +176,21 @@ export default async function QryxSetupPage({
           <div className="flex items-center justify-between">
             <Link
               href="/products"
-              className="flex items-center gap-2 text-slate-400 transition-colors hover:text-cyan-400"
+              className="inline-flex items-center gap-2 text-sm text-slate-400 hover:text-white transition-colors"
             >
               <ArrowLeft className="h-4 w-4" />
-              <span>Back to Products</span>
+              Back to Products
             </Link>
             <div className="flex items-center gap-2">
               <Sparkles className="h-5 w-5 text-cyan-500" />
-              <span className="text-xl font-bold text-white">Qryx Setup</span>
+              <span className="font-semibold text-white">Qryx Setup</span>
             </div>
           </div>
         </div>
       </header>
 
-      {/* Shop Info Banner */}
-      <div className="bg-slate-900/30 border-b border-slate-800/30">
+      {/* Shop indicator */}
+      <div className="border-b border-slate-800/30 bg-slate-900/30">
         <div className="mx-auto max-w-7xl px-4 py-3 sm:px-6 lg:px-8">
           <p className="text-sm text-slate-400">
             Installing for: <span className="text-cyan-400 font-medium">{shop}</span>
@@ -157,28 +198,98 @@ export default async function QryxSetupPage({
         </div>
       </div>
 
-      {/* Main Content */}
+      {/* Main content */}
       <main className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
-        {/* Hero Section */}
-        <div className="mb-12 text-center">
-          <h1 className="mb-4 text-4xl font-bold text-white">
-            Choose Your <span className="text-cyan-500">Qryx</span> Plan
+        <div className="text-center mb-12">
+          <h1 className="text-4xl font-bold text-white mb-4">
+            Choose Your <span className="text-cyan-400">Qryx</span> Plan
           </h1>
-          <p className="mx-auto max-w-2xl text-lg text-slate-400">
+          <p className="text-lg text-slate-400 max-w-2xl mx-auto">
             Select the plan that fits your store&apos;s needs. Upgrade or downgrade anytime.
           </p>
         </div>
 
-        {/* Pricing Cards */}
+        {/* Pricing grid */}
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-          {PRICING_PLANS.map((plan) => (
-            <PricingCard key={plan.id} plan={plan} shop={shop} />
-          ))}
+          {PRICING_PLANS.map((plan) => {
+            const Icon = plan.icon;
+            const isPopular = plan.popular;
+            const isFree = plan.isFree;
+            
+            return (
+              <div
+                key={plan.id}
+                className={`relative rounded-2xl border p-6 transition-all hover:scale-[1.02] ${
+                  isPopular
+                    ? 'border-cyan-500/50 bg-slate-900/60 ring-1 ring-cyan-500/20'
+                    : isFree
+                    ? 'border-emerald-500/30 bg-slate-900/40'
+                    : 'border-slate-800/60 bg-slate-900/40'
+                }`}
+              >
+                {isPopular && (
+                  <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+                    <span className="rounded-full bg-cyan-500 px-3 py-1 text-xs font-semibold text-slate-900">
+                      POPULAR
+                    </span>
+                  </div>
+                )}
+
+                <div className={`mb-4 inline-flex h-12 w-12 items-center justify-center rounded-xl ${
+                  isFree ? 'bg-emerald-500/20' : 'bg-cyan-500/20'
+                }`}>
+                  <Icon className={`h-6 w-6 ${isFree ? 'text-emerald-500' : 'text-cyan-500'}`} />
+                </div>
+
+                <h3 className="mb-2 text-xl font-semibold text-white">{plan.name}</h3>
+                <p className="mb-4 text-sm text-slate-400 min-h-[40px]">{plan.description}</p>
+
+                <div className="mb-6">
+                  <span className="text-4xl font-bold text-white">${plan.price}</span>
+                  <span className="text-slate-400">/month</span>
+                </div>
+
+                <ul className="mb-6 space-y-3">
+                  {plan.features.map((feature, idx) => (
+                    <li key={idx} className="flex items-start gap-2 text-sm text-slate-300">
+                      <Check className={`h-4 w-4 mt-0.5 shrink-0 ${isFree ? 'text-emerald-500' : 'text-cyan-500'}`} />
+                      {feature}
+                    </li>
+                  ))}
+                </ul>
+
+                {isFree ? (
+                  <a
+                    href={`/api/qryx/start-oauth?shop=${encodeURIComponent(shop)}&plan=free`}
+                    className="block w-full rounded-lg bg-emerald-500 py-3 text-center font-semibold text-slate-900 transition-colors hover:bg-emerald-400"
+                  >
+                    Start Free
+                  </a>
+                ) : (
+                  <form action="/api/stripe/checkout" method="POST">
+                    <input type="hidden" name="shop" value={shop} />
+                    <input type="hidden" name="priceId" value={plan.priceId} />
+                    <input type="hidden" name="planName" value={plan.name} />
+                    <button
+                      type="submit"
+                      className={`w-full rounded-lg py-3 font-semibold transition-colors ${
+                        isPopular
+                          ? 'bg-cyan-500 text-slate-900 hover:bg-cyan-400'
+                          : 'bg-slate-800 text-white hover:bg-slate-700'
+                      }`}
+                    >
+                      Subscribe Now
+                    </button>
+                  </form>
+                )}
+              </div>
+            );
+          })}
         </div>
 
-        {/* FAQ / Additional Info */}
-        <div className="mt-16 text-center">
-          <p className="text-sm text-slate-400">
+        {/* Footer note */}
+        <div className="mt-12 text-center">
+          <p className="text-sm text-slate-500">
             All plans include 14-day free trial. No credit card required.
           </p>
           <p className="mt-2 text-sm text-slate-500">
@@ -186,91 +297,6 @@ export default async function QryxSetupPage({
           </p>
         </div>
       </main>
-    </div>
-  );
-}
-
-function PricingCard({ plan, shop }: { plan: typeof PRICING_PLANS[0]; shop: string }) {
-  const IconMap: Record<string, React.ElementType> = {
-    free: Gift,
-    starter: Zap,
-    professional: TrendingUp,
-    business: Building2,
-  };
-  const Icon = IconMap[plan.id] || Zap;
-
-  return (
-    <div
-      className={`
-        relative overflow-hidden rounded-2xl border bg-slate-900/40 p-6 backdrop-blur-sm transition-all
-        ${
-          plan.popular
-            ? 'border-cyan-500/50 shadow-lg shadow-cyan-500/20 ring-2 ring-cyan-500/20'
-            : 'border-slate-800/60 hover:border-slate-700'
-        }
-      `}
-    >
-      {/* Popular Badge */}
-      {plan.popular && (
-        <div className="absolute right-3 top-3 rounded-full bg-cyan-500 px-2 py-0.5 text-xs font-semibold text-slate-900">
-          POPULAR
-        </div>
-      )}
-
-      {/* Plan Header */}
-      <div className="mb-4">
-        <div className="mb-3 inline-flex rounded-lg bg-slate-800/50 p-2">
-          <Icon className={`h-5 w-5 ${plan.isFree ? 'text-green-500' : 'text-cyan-500'}`} />
-        </div>
-        <h3 className="mb-1 text-xl font-bold text-white">{plan.name}</h3>
-        <p className="text-xs text-slate-400">{plan.description}</p>
-      </div>
-
-      {/* Pricing */}
-      <div className="mb-4">
-        <div className="flex items-baseline gap-1">
-          <span className={`text-3xl font-bold ${plan.isFree ? 'text-green-400' : 'text-white'}`}>{plan.price}</span>
-          <span className="text-slate-400 text-sm">{plan.period}</span>
-        </div>
-      </div>
-
-      {/* Features */}
-      <ul className="mb-6 space-y-2">
-        {plan.features.map((feature) => (
-          <li key={feature} className="flex items-start gap-2">
-            <Check className={`h-4 w-4 shrink-0 ${plan.isFree ? 'text-green-500' : 'text-cyan-500'}`} />
-            <span className="text-xs text-slate-300">{feature}</span>
-          </li>
-        ))}
-      </ul>
-
-      {/* CTA Button */}
-      {plan.isFree ? (
-        <a
-          href={`/api/qryx/start-oauth?shop=${encodeURIComponent(shop)}&plan=free`}
-          className="block w-full rounded-lg px-4 py-2.5 font-semibold text-center bg-green-600 text-white hover:bg-green-500 transition-all"
-        >
-          Start Free
-        </a>
-      ) : (
-        <form action="/api/stripe/checkout" method="POST">
-          <input type="hidden" name="planId" value={plan.id} />
-          <input type="hidden" name="shop" value={shop} />
-          <button
-            type="submit"
-            className={`
-              w-full rounded-lg px-4 py-2.5 font-semibold transition-all
-              ${
-                plan.popular
-                  ? 'bg-cyan-500 text-slate-900 hover:bg-cyan-400 shadow-lg shadow-cyan-500/25'
-                  : 'bg-slate-800 text-white hover:bg-slate-700'
-              }
-            `}
-          >
-            Subscribe Now
-          </button>
-        </form>
-      )}
     </div>
   );
 }
