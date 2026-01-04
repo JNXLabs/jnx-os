@@ -4,6 +4,8 @@
  * Serves the chat widget JavaScript with shop-specific configuration
  * Embedded in Shopify stores via Script Tag
  * 
+ * KRITISCH: Prüft Subscription-Status bevor Widget funktioniert!
+ * 
  * Usage:
  * <script src="https://your-app.vercel.app/api/widget/qryx?shop_id=xxx"></script>
  * 
@@ -31,12 +33,45 @@ export async function GET(request: NextRequest) {
       return new NextResponse('Shop not found', { status: 404 });
     }
 
-    const config = await getOrCreateQryxConfig(shop.id);
+    // =================================================================
+    // KRITISCH: SUBSCRIPTION STATUS CHECK
+    // =================================================================
+    const subscriptionStatus = (shop as any).subscription_status || 'pending';
+    const trialExpiresAt = (shop as any).trial_expires_at ? new Date((shop as any).trial_expires_at) : null;
+    const now = new Date();
+    
+    const isActive = subscriptionStatus === 'active';
+    const isTrialValid = subscriptionStatus === 'trial' && trialExpiresAt && trialExpiresAt > now;
+    const hasAccess = isActive || isTrialValid;
+    
+    logger.info('Widget access check', { 
+      shop_id, 
+      subscriptionStatus, 
+      isActive, 
+      isTrialValid, 
+      hasAccess,
+      trialExpiresAt: trialExpiresAt?.toISOString()
+    });
 
-    // Generate widget JavaScript with config
+    // Wenn KEIN aktiver Plan: Zeige "Upgrade Required" Widget
+    if (!hasAccess) {
+      const upgradeUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://www.jnxlabs.ai';
+      const upgradeJS = generateUpgradeScript(shop_id, subscriptionStatus, upgradeUrl);
+      
+      return new NextResponse(upgradeJS, {
+        status: 200,
+        headers: {
+          'Content-Type': 'application/javascript',
+          'Cache-Control': 'public, max-age=60', // Shorter cache for status updates
+          'Access-Control-Allow-Origin': '*',
+        },
+      });
+    }
+
+    // Hat aktiven Plan: Volles Widget laden
+    const config = await getOrCreateQryxConfig(shop.id);
     const widgetJS = generateWidgetScript(shop.id, config);
 
-    // Return as JavaScript with proper headers
     return new NextResponse(widgetJS, {
       status: 200,
       headers: {
@@ -52,11 +87,84 @@ export async function GET(request: NextRequest) {
 }
 
 // =============================================================================
-// WIDGET SCRIPT GENERATOR
+// UPGRADE REQUIRED SCRIPT (Subscription inactive/expired)
+// =============================================================================
+
+function generateUpgradeScript(shopId: string, status: string, upgradeUrl: string): string {
+  const isTrialExpired = status === 'trial'; // Trial that has expired
+  const message = isTrialExpired 
+    ? 'Your Qryx trial has expired. Upgrade to continue using AI-powered chat.'
+    : 'Activate your Qryx subscription to enable AI-powered chat.';
+  
+  return `
+(function() {
+  'use strict';
+  
+  console.log('[Qryx] Subscription check: ${status} - Upgrade required');
+  
+  // Only show upgrade notice on first load, not every time
+  if (window.qryxUpgradeShown) return;
+  window.qryxUpgradeShown = true;
+  
+  // Create subtle upgrade notice (not intrusive)
+  const notice = document.createElement('div');
+  notice.id = 'qryx-upgrade-notice';
+  notice.innerHTML = \`
+    <style>
+      #qryx-upgrade-notice {
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        z-index: 999998;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      }
+      
+      #qryx-upgrade-button {
+        background: linear-gradient(135deg, #06b6d4 0%, #3b82f6 100%);
+        color: white;
+        border: none;
+        padding: 14px 20px;
+        border-radius: 12px;
+        cursor: pointer;
+        box-shadow: 0 4px 12px rgba(6, 182, 212, 0.3);
+        font-size: 14px;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        transition: all 0.3s ease;
+      }
+      
+      #qryx-upgrade-button:hover {
+        transform: scale(1.05);
+        box-shadow: 0 6px 16px rgba(6, 182, 212, 0.4);
+      }
+      
+      #qryx-upgrade-button svg {
+        width: 20px;
+        height: 20px;
+      }
+    </style>
+    
+    <button id="qryx-upgrade-button" onclick="window.open('${upgradeUrl}/products/qryx?shop_id=${shopId}', '_blank')">
+      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"></path>
+      </svg>
+      ${isTrialExpired ? 'Activate Qryx Chat' : 'Enable AI Chat'}
+    </button>
+  \`;
+  
+  document.body.appendChild(notice);
+})();
+  `.trim();
+}
+
+// =============================================================================
+// FULL WIDGET SCRIPT (Active subscription)
 // =============================================================================
 
 function generateWidgetScript(shopId: string, config: any): string {
-  const apiUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.SHOPIFY_APP_URL || 'https://your-app.vercel.app';
+  const apiUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.SHOPIFY_APP_URL || 'https://www.jnxlabs.ai';
   
   return `
 (function() {
@@ -101,7 +209,7 @@ function generateWidgetScript(shopId: string, config: any): string {
       // Could load history here if needed
     }
 
-    console.log('[Qryx] Widget initialized');
+    console.log('[Qryx] Widget initialized - Active subscription');
   }
 
   // ==========================================================================

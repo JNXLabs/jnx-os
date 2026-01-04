@@ -2,15 +2,20 @@
 
 import { SignUp, useUser } from '@clerk/nextjs';
 import Link from 'next/link';
-import { Zap, Loader2, CheckCircle2 } from 'lucide-react';
+import { Zap, Loader2, CheckCircle2, Store } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 
 export default function SignupPage() {
   const searchParams = useSearchParams();
   const redirectUrl = searchParams?.get('redirect_url');
+  const installSessionId = searchParams?.get('install_session_id');
+  const shopDomain = searchParams?.get('shop');
   const { isSignedIn, isLoaded } = useUser();
   const [isRedirecting, setIsRedirecting] = useState(false);
+
+  // Is this a Shopify installation flow?
+  const isShopifyInstall = !!(installSessionId && shopDomain);
 
   // Handle successful signup - redirect to the specified URL
   useEffect(() => {
@@ -35,8 +40,12 @@ export default function SignupPage() {
           <div className="mb-6 inline-flex h-16 w-16 items-center justify-center rounded-full bg-green-500/20">
             <CheckCircle2 className="h-8 w-8 text-green-500" />
           </div>
-          <h1 className="text-2xl font-bold text-white mb-2">Account Created!</h1>
-          <p className="text-slate-400 mb-4">Redirecting you back...</p>
+          <h1 className="text-2xl font-bold text-white mb-2">
+            {isShopifyInstall ? 'Account Created!' : 'Account Created!'}
+          </h1>
+          <p className="text-slate-400 mb-4">
+            {isShopifyInstall ? 'Setting up Qryx for your shop...' : 'Redirecting you back...'}
+          </p>
           <Loader2 className="h-6 w-6 text-cyan-500 animate-spin mx-auto" />
         </div>
       </div>
@@ -61,9 +70,37 @@ export default function SignupPage() {
 
       {/* Main Content */}
       <div className="mt-16 w-full max-w-md">
+        
+        {/* 🚨 SHOPIFY INSTALLATION BANNER */}
+        {isShopifyInstall && (
+          <div className="mb-6 p-4 bg-cyan-500/10 border border-cyan-500/30 rounded-xl">
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 bg-cyan-500/20 rounded-lg flex items-center justify-center flex-shrink-0">
+                <Store className="w-5 h-5 text-cyan-400" />
+              </div>
+              <div>
+                <p className="text-cyan-400 font-semibold">📦 Fast geschafft!</p>
+                <p className="text-slate-300 text-sm mt-1">
+                  Du installierst Qryx in <span className="font-mono text-cyan-300">{shopDomain}</span>
+                </p>
+                <p className="text-slate-400 text-xs mt-2">
+                  Erstelle einen Account, um die Installation abzuschließen.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+        
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-white mb-2">Get Started</h1>
-          <p className="text-slate-400">Create your JNX-OS account</p>
+          <h1 className="text-3xl font-bold text-white mb-2">
+            {isShopifyInstall ? 'Account erstellen' : 'Get Started'}
+          </h1>
+          <p className="text-slate-400">
+            {isShopifyInstall 
+              ? 'Erstelle deinen JNX Account für Qryx' 
+              : 'Create your JNX-OS account'
+            }
+          </p>
         </div>
 
         {/* Clerk SignUp Component */}
@@ -77,7 +114,10 @@ export default function SignupPage() {
             }}
             routing="path"
             path="/signup"
-            signInUrl="/login"
+            signInUrl={isShopifyInstall 
+              ? `/login?install_session_id=${installSessionId}&shop=${shopDomain}&redirect_url=${encodeURIComponent(redirectUrl || '')}` 
+              : "/login"
+            }
             fallbackRedirectUrl={redirectUrl ? decodeURIComponent(redirectUrl) : "/app"}
             forceRedirectUrl={redirectUrl ? decodeURIComponent(redirectUrl) : undefined}
           />
@@ -87,7 +127,13 @@ export default function SignupPage() {
         <div className="mt-6 text-center">
           <p className="text-sm text-slate-400">
             Already have an account?{' '}
-            <Link href="/login" className="text-cyan-500 hover:text-cyan-400 transition-colors">
+            <Link 
+              href={isShopifyInstall 
+                ? `/login?install_session_id=${installSessionId}&shop=${shopDomain}&redirect_url=${encodeURIComponent(redirectUrl || '')}` 
+                : "/login"
+              } 
+              className="text-cyan-500 hover:text-cyan-400 transition-colors"
+            >
               Sign in
             </Link>
           </p>
