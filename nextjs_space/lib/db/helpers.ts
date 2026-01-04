@@ -820,7 +820,20 @@ export async function syncUserFromClerk(
     // Check if user already exists
     const existingUser = await getUserByClerkId(clerkUserId);
     if (existingUser) {
-      // User exists, just return it
+      // CRITICAL: If user exists but has no org_id, create org for them
+      if (!existingUser.org_id) {
+        console.warn('[syncUserFromClerk] User exists but has no org_id, creating org...', { clerkUserId });
+        const orgName = `${firstName || 'User'}'s Organization`;
+        const result = await createUserWithOrg(
+          clerkUserId,
+          email,
+          firstName || null,
+          lastName || null,
+          orgName
+        );
+        return result?.user || null;
+      }
+      // User exists with org, just return it
       return existingUser;
     }
 
