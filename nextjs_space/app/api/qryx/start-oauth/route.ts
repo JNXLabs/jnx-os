@@ -83,14 +83,17 @@ export async function GET(request: NextRequest) {
     const existingShop = await getShopByUserAndDomain(user.id, shop);
     
     if (existingShop && ['active', 'trialing', 'free'].includes(existingShop.subscription_status || '')) {
-      // User already has subscription - just do OAuth for reinstall
+      // User already has subscription - allow reinstall with new plan selection
       logger.info('Reinstall scenario - user has active subscription:', {
         userId: user.id,
         shop,
         status: existingShop.subscription_status,
+        newPlan: plan || existingShop.plan_tier,
       });
       
-      const state = generateNonce();
+      // Use plan from URL or keep existing plan
+      const planToUse = plan || existingShop.plan_tier || 'free';
+      const state = `${generateNonce()}_${planToUse}_${jnxUser.org_id}`;
       const authUrl = await getAuthorizationUrl(shop, state);
       return NextResponse.redirect(authUrl);
     }

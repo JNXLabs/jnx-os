@@ -104,6 +104,8 @@ export async function GET(request: NextRequest) {
     const existingShop = await getShopByUserAndDomain(clerkUser.id, shop);
     
     // Step 5: Upsert Shopify shop with access token AND plan info
+    // IMPORTANT: Always use the plan from the OAuth state, not existing shop
+    // This allows users to reinstall with a different plan
     const shopRecord = await upsertShopifyShop({
       org_id: jnxUser.org_id,
       clerk_user_id: clerkUser.id,
@@ -117,9 +119,9 @@ export async function GET(request: NextRequest) {
       country_code: shopInfo.country_code,
       currency: shopInfo.currency,
       timezone: shopInfo.timezone,
-      // Set plan from OAuth state (or preserve existing)
-      subscription_status: existingShop?.subscription_status || (plan === 'free' ? 'free' : 'trialing'),
-      plan_tier: existingShop?.plan_tier || plan,
+      // Set plan from OAuth state (prioritize new selection over old data)
+      subscription_status: plan === 'free' ? 'free' : 'trialing',
+      plan_tier: plan,
     });
     
     console.log('[Qryx Callback] Shop saved/updated:', {
